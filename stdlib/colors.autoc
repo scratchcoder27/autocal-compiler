@@ -1,0 +1,27 @@
+// Minecraft codes
+
+#define BLACK               "§0"
+#define DARK_BLUE           "§1"
+#define DARK_GREEN          "§2"
+#define DARK_AQUA           "§3"
+#define DARK_RED            "§4"
+#define DARK_PURPLE         "§5"
+#define GOLD                "§6"
+#define GRAY                "§7"
+#define DARK_GRAY           "§8"
+#define BLUE                "§9"
+#define GREEN               "§a"
+#define AQUA                "§b"
+#define RED                 "§c"
+#define LIGHT_PURPLE        "§d"
+#define YELLOW              "§e"
+#define WHITE               "§f"
+
+// Formatting
+#define OBFUSCATED          "§k"
+#define BOLD                "§l"
+#define STRIKETHROUGH       "§m"
+#define UNDERLINE           "§n"
+#define ITALIC              "§o"
+
+#define RESET               "§r"

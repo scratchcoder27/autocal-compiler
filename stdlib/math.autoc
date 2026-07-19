@@ -1,0 +1,174 @@
+#ifndef MATH_AUTOC
+#define MATH_AUTOC
+
+
+// MARK: Constants
+
+#define PI 3.141592653589793
+#define TWO_PI 6.283185307179586
+#define HALF_PI 1.5707963267948966
+#define DEG2RAD 0.017453292519943295
+#define RAD2DEG 57.29577951308232
+
+
+// MARK: Macros
+
+#define abs(x) ((x) < 0 ? -(x) : (x))
+#define min(a,b) ((a) < (b) ? (a) : (b))
+#define max(a,b) ((a) > (b) ? (a) : (b))
+#define clamp(x,l,h) min(max((x),(l)),(h))
+#define square(x) ((x)*(x))
+#define cube(x) ((x)*(x)*(x))
+#define lerp(a,b,t) ((a)+((b)-(a))*(t))
+
+
+// MARK: Conversions
+
+def toRadians(deg : float) -> float:
+    return deg * DEG2RAD
+
+def toDegrees(rad : float) -> float:
+    return rad * RAD2DEG
+
+
+// Fast sqrt (Newton)
+
+def sqrt(x : float) -> float:
+    if x <= 0:
+        return 0.0
+
+    var g = x
+    if x < 1:
+        g = 1.0
+
+    g = (g + x/g) / 2
+    g = (g + x/g) / 2
+    g = (g + x/g) / 2
+    g = (g + x/g) / 2
+    g = (g + x/g) / 2
+
+    return g
+
+
+// Angle reduction
+
+def wrapRadians(x : float) -> float:
+    while x < 0:
+        x += TWO_PI
+
+    while x >= TWO_PI:
+        x -= TWO_PI
+
+    return x
+
+// MARK: TRIG
+
+// sin
+
+def sinReduced(x : float) -> float:
+    var x2 = x * x
+
+    var num = 1.0 + x2 * (-0.13383838383838384 + x2 * 0.003312890812890813)
+
+    var den = 1.0 + x2 * (0.03282828282828283 + x2 * 0.00003006253006253006)
+
+    return x * (num / den)
+
+
+def sin(x : float) -> float:
+    x = wrapRadians(x)
+
+    var sign = 1.0
+
+    if x > PI:
+        x -= PI
+        sign = -1.0
+
+    if x > HALF_PI:
+        x = PI - x
+
+    return sign * sinReduced(x)
+
+
+def cos(x : float) -> float:
+    return sin(x + HALF_PI)
+
+// tan
+
+def tan(x : float) -> float:
+    return sin(x) / cos(x)
+
+// MARK: Inverse trig
+
+def asin(x : float) -> float:
+    x = clamp(x, -1.0, 1.0)
+
+    if x >= 1.0:
+        return HALF_PI
+
+    if x <= -1.0:
+        return -HALF_PI
+
+    var sign = 1.0
+
+    if x < 0.0:
+        sign = -1.0
+        x = -x
+
+    return sign * (
+        HALF_PI -
+        2.0 * atan(sqrt((1.0 - x) / (1.0 + x)))
+    )
+    
+def acos(x : float) -> float:
+    return HALF_PI - asin(x)
+    
+def atan(x : float) -> float:
+    var sign = 1.0
+
+    if x < 0.0:
+        sign = -1.0
+        x = -x
+    if x > 1.0:
+        return sign * (HALF_PI - atan(1.0 / x))
+
+    var x2 = x * x
+
+    var result = x * (
+        0.9998660 +
+        x2 * (
+            -0.3302995 +
+            x2 * (
+                0.1801410 +
+                x2 * (
+                    -0.0851330 +
+                    x2 * 0.0208351
+                )
+            )
+        )
+    )
+
+    return sign * result
+    
+    // MARK: Other utilities
+
+def hyp(x : float, y : float) -> float:
+    return sqrt(x*x + y*y)
+
+def distance(x1 : float, y1 : float, x2 : float, y2 : float) -> float:
+    return hyp(x2-x1, y2-y1)
+
+def sign(x : float) -> float:
+    if x < 0:
+        return -1.0
+    else if x > 0:
+        return 1.0
+    return 0.0
+
+def fract(x : float) -> float:
+    return x - floor(x)
+
+def mod(x : float, y : float) -> float:
+    return x - floor(x / y) * y
+
+#endif

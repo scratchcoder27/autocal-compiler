@@ -1,0 +1,38 @@
+#pragma clockspeed 400
+
+#define TEXT_PORT "control"
+#define WIDTH 20
+#define HEIGHT 16
+
+#include "io.autoc"
+#include "colors.autoc"
+
+CLEAR()
+
+def getColor(n : float) -> str:
+    if n < 0.25:
+        return WHITE
+    else if n < 0.5:
+        return GRAY
+    else if n < 0.75:
+        return DARK_GRAY
+    else:
+        return BLACK
+
+for (var y = 0; y < HEIGHT; y++):
+    var row = BLACK
+
+    for (var x = 0; x < WIDTH; x++):
+        // Normalized coordinates centered at (0,0)
+        var nx = (toFloat(x) + 0.5) / WIDTH * 2.0 - 1.0
+        var ny = (toFloat(y) + 0.5) / HEIGHT * 2.0 - 1.0
+
+        // Characters are taller than they are wide
+        nx *= toFloat(WIDTH) / HEIGHT
+
+        // Distance from center
+        var d = (nx * nx + ny * ny) / 20
+
+        row += getColor(d) + "█"
+
+    PRINT(row)

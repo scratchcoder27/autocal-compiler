@@ -1,0 +1,36 @@
+#pragma clockspeed 100
+
+#define TEXT_PORT "control"
+#include <io>
+#include <math>
+#include <bool>
+
+def getFloat(prompt : str, clear : bool) -> float:
+    COMMAND("chan input")
+    COMMAND("send None")
+    if clear:
+        CLEAR()
+
+    PRINT(prompt)
+    while (listen("input") == "None"):
+        endtick
+
+    return toFloat(listen("input"))
+
+var n = getFloat("Enter an angle in degrees:", true)
+var varRad = toRadians(n)
+var sinVal = sin(varRad)
+var cosVal = cos(varRad)
+var tanVal = tan(varRad)
+
+PRINT("Value in radians =  " + varRad)
+PRINT("Sine of " + n + " = " + sinVal)
+PRINT("Cos of " + n + " = " + cosVal)
+PRINT("Tan of " + n + " = " + tanVal)
+PRINT("")
+PRINT("Inaccuracy in sin = ")
+PRINT(abs(sinVal - 0.5))
+PRINT("Inaccuracy in cos = ")
+PRINT(abs(cosVal - 0.8660254037844387))
+PRINT("Inaccuracy in tan = ")
+PRINT(abs(tanVal - 0.5773502691896257))

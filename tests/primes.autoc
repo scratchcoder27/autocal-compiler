@@ -1,0 +1,19 @@
+#pragma clockspeed 500
+
+#include "defines.txt"
+#define NUM 20
+
+var prefix_write = "write!"
+
+send("clear", CONTROLLER_PORT)
+endtick
+
+var isPrime
+for (var i = 2; i < NUM; i++):
+    isPrime = 1
+    for (var j = 2; j < i; j++):
+        if (round(MOD(i, j)) == 0): // division causes decimals like 0.0, which arent equal to 0
+            isPrime = 0
+    if isPrime:
+        send(prefix_write + toStr(round(i)), CONTROLLER_PORT)
+        endtick

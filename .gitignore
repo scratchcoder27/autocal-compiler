@@ -1,0 +1,6 @@
+.venv/*
+test/*
+bin/*
+src/__pycache__/*
+testing/*
+.vscode/*

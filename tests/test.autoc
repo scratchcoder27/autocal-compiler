@@ -1,0 +1,6 @@
+#pragma clockspeed 100
+
+#define TEXT_PORT "control"
+#include <io>
+
+PRINT("test: " + -3)

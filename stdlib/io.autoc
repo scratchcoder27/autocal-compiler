@@ -1,0 +1,13 @@
+#ifndef LIB_IO
+#define LIB_IO
+
+#ifndef TEXT_PORT
+#error TEXT_PORT must be defined
+#endif
+
+#define CLEAR() send("clear", TEXT_PORT) \n endtick
+#define PRINT(A) send("write!" + (A), TEXT_PORT) \n endtick
+#define SETLINE(A, B) send("set<" + toStr(A) + ">!" + B, TEXT_PORT) \n endtick
+#define COMMAND(A) send("submit!" + (A), TEXT_PORT) \n endtick
+
+#endif

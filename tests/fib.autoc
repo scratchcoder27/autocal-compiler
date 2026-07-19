@@ -1,0 +1,24 @@
+#pragma clockspeed 20
+
+#include "defines.txt"
+#define NUM 35
+
+// vars
+var prefix_write = "write!"
+var n1 = 0
+var n2 = 1
+
+// clear
+send("clear", CONTROLLER_PORT)
+endtick
+
+// loop
+for (var i = 0; i < NUM; i++):
+    var sum = n1 + n2
+    n1 = n2
+    n2 = sum
+
+    send(prefix_write + toStr(round(n1)), CONTROLLER_PORT)
+    endtick
+
+send(round(n1), NUMBER_DISPLAY_PORT)
