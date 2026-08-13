@@ -1,4 +1,4 @@
-from ast_nodes import Block, Function, VariableDeclaration, Program
+from ast_nodes import Assembly, Block, Function, VariableDeclaration, Program
 from stmt import *
 from expr import *
 
@@ -278,3 +278,10 @@ class DeadFunctionEliminationPass(StmtVisitor, ExprVisitor):
         )
         obj.datatype = expr.datatype
         return obj
+
+    def visit_assembly_stmt(self, stmt: Assembly):
+        return Assembly(
+            stmt.lines,
+            stmt.substitutions,
+            location=stmt.location,
+        )

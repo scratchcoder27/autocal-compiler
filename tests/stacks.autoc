@@ -1,0 +1,24 @@
+#pragma clockspeed 100
+
+#define TEXT_PORT "control"
+#include <termio>
+#include <stack>
+
+#define NUMBER_ITER 50 // unfortunately, doesn't work for 100 because of AUTOCAL buffersize limits
+
+CLEAR()
+
+var init_time = worldtime()
+CREATE_STACK(test)
+
+for (var i = 1; i < NUMBER_ITER; i++):
+    PUSH_STACK(test, i)
+
+PRINT("Time elapsed=" + (worldtime() - init_time))
+
+init_time = worldtime()
+var x
+for (var i = 1; i < NUMBER_ITER; i++)
+    POP_STACK(test, x)
+
+PRINT("Time elapsed=" + (worldtime() - init_time))

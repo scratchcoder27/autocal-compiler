@@ -1,0 +1,15 @@
+var _temp_val = "0"
+#define STACK_SEPARATOR "|"
+
+#define CREATE_STACK(name) set_splitter(STACK_SEPARATOR) \n \
+                            var name&idx = 1 \n \
+                            var name = "Null"
+
+#define PUSH_STACK(name, val) name += STACK_SEPARATOR + toStr(val) \n \
+                                name&idx++
+
+#define PEEK_STACK(name) (split(name, name&idx))
+
+#define POP_STACK(name, variable_name) _temp_val = split(name, (name&idx--)+1) \n \
+                                        name = name[:(len(name) - toInt(len(_temp_val)) - 1)] \n \
+                                        variable_name = _temp_val

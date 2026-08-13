@@ -1,3 +1,5 @@
+import re
+
 import colors
 from expr import *
 from stmt import *
@@ -6,6 +8,8 @@ from token_types import TokenType
 from tokens import Token
 from scope import Scope
 from variable import Variable
+
+ASM_PLACEHOLDER_REGEX = re.compile(r"<<(\w+)>>")
 
 class CodeGenException(Exception):
     def __init__(
@@ -664,7 +668,8 @@ class CodeGenerator(ExprVisitor, StmtVisitor):
                 return result_val
             
             case TokenType.LENGTH:
-                self.add_stmt("length", f"${val}$")
+                self.add_stmt("load", f"{val}")
+                self.add_stmt("length")
                 self.add_stmt("save", f"{result_val}")
                 return result_val
             
@@ -736,17 +741,23 @@ class CodeGenerator(ExprVisitor, StmtVisitor):
                 self.add_stmt("save", value_var)
 
             len_var = self.next_tmp()
-            self.add_stmt("length", f"${value_var}$")
+            self.add_stmt("load", value_var)
+            self.add_stmt("length")
             self.add_stmt("save", len_var)
 
+            last_amt = self._wrap(*self._diff_operand((False, len_var), left_op))
+
             self.add_stmt("load", value_var)
-            self.add_stmt("last", self._wrap(*self._diff_operand((False, len_var), left_op)))
+            self.add_stmt("last", last_amt)
             self.add_stmt("save", result_val)
             return result_val
 
+        first_amt = self._wrap(*right_op)
+        last_amt = self._wrap(*self._diff_operand(right_op, left_op))
+
         self.add_stmt("buffer" if value_c else "load", str(value_v))
-        self.add_stmt("first", self._wrap(*right_op))
-        self.add_stmt("last", self._wrap(*self._diff_operand(right_op, left_op)))
+        self.add_stmt("first", first_amt)
+        self.add_stmt("last", last_amt)
         self.add_stmt("save", result_val)
         return result_val
 
@@ -766,3 +777,47 @@ class CodeGenerator(ExprVisitor, StmtVisitor):
         self.add_stmt("last", "1")
         self.add_stmt("save", result_val)
         return result_val
+
+    # MARK: inline assembly
+
+    def visit_assembly_stmt(self, stmt: Assembly):
+        for line in stmt.lines:
+            resolved_line = self._substitute_asm_placeholders(line, stmt)
+            self._emit_asm_line(resolved_line, stmt)
+
+    def _substitute_asm_placeholders(self, line: str, stmt: Assembly) -> str:
+        def replace(match: re.Match) -> str:
+            key = match.group(1)
+            if key not in stmt.substitutions:
+                raise CodeGenException(
+                    f"Inline assembly references undeclared placeholder '<<{key}>>'",
+                    *stmt.location,
+                )
+            var_name = stmt.substitutions[key]
+            if not self.scopes.check_exists(var_name):
+                raise CodeGenException(
+                    f"Inline assembly substitution '{key}' refers to undefined variable '{var_name}'",
+                    *stmt.location,
+                )
+            return self._mangled_name(var_name)
+
+        return ASM_PLACEHOLDER_REGEX.sub(replace, line)
+
+    def _emit_asm_line(self, line: str, stmt: Assembly):
+        line = line.strip()
+        if not line:
+            return
+
+        if " " in line:
+            opcode, rest = line.split(" ", 1)
+            rest = rest.strip()
+        else:
+            opcode, rest = line, None
+
+        if rest is not None and len(rest) >= 2 and rest[0] == '"' and rest[-1] == '"':
+            rest = rest[1:-1]
+
+        if rest is None:
+            self.add_stmt(opcode)
+        else:
+            self.add_stmt(opcode, rest)

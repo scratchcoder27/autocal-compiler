@@ -1,4 +1,4 @@
-from ast_nodes import Block, Function, VariableDeclaration, Program
+from ast_nodes import Assembly, Block, Function, VariableDeclaration, Program
 from stmt import *
 from expr import *
 from token_types import TokenType
@@ -637,3 +637,17 @@ class TypeCheckingPass(StmtVisitor, ExprVisitor):
 
         obj.datatype = Datatypes.STRING
         return obj
+
+    def visit_assembly_stmt(self, stmt: Assembly):
+        for key, name in stmt.substitutions.items():
+            if not self.scope.check_exists(name):
+                raise TypeError(
+                    f"Inline assembly substitution '{key}' refers to undefined variable '{name}'",
+                    *stmt.location,
+                )
+
+        return Assembly(
+            stmt.lines,
+            stmt.substitutions,
+            location=stmt.location,
+        )

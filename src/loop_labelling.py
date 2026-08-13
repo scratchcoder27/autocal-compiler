@@ -1,4 +1,4 @@
-from ast_nodes import Block, Function, VariableDeclaration, Program
+from ast_nodes import Assembly, Block, Function, VariableDeclaration, Program
 from stmt import *
 from expr import *
 
@@ -266,4 +266,11 @@ class LoopLabellingPass(StmtVisitor, ExprVisitor):
             value,
             idx,
             location=expr.location,
+        )
+    
+    def visit_assembly_stmt(self, stmt: Assembly):
+        return Assembly(
+            stmt.lines,
+            stmt.substitutions,
+            location=stmt.location,
         )

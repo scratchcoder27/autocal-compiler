@@ -1,6 +1,2 @@
-#pragma clockspeed 100
-
-#define TEXT_PORT "control"
-#include <io>
-
-PRINT("test: " + -3)
+var a = 3
+var b = "abc" + a + "def"

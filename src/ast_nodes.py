@@ -48,3 +48,12 @@ class Block(Node):
 @dataclass 
 class InitDecl(Node):
     val : Expr | Stmt
+
+
+@dataclass
+class Assembly(Node):
+    lines: list[str]
+    substitutions: dict[str, str]
+
+    def accept(self, visitor):
+        return visitor.visit_assembly_stmt(self)

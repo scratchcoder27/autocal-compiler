@@ -30,7 +30,7 @@ class Parser:
             TokenType.TYPE_INT : Datatypes.INT,
             TokenType.TYPE_FLOAT : Datatypes.FLOAT,
             TokenType.TYPE_STRING : Datatypes.STRING,
-            TokenType.TYPE_ARRAY : Null
+            TokenType.TYPE_ARRAY : Null # TODO
         }
 
         self.INBUILT_FUNCTIONS_ARG_1 = {
@@ -234,6 +234,7 @@ class Parser:
 
                 self.consume(TokenType.LEFT_PAREN, "Expected opening parentheses in for statement")
 
+        
                 if self.peek().type == TokenType.VAR:
                     init_expr = self.variable_declaration(True)
                 else:
@@ -306,6 +307,12 @@ class Parser:
                 name = self.expression()
                 self.consume(TokenType.RIGHT_PAREN, "Expected closing parantheses")
                 return SendStatement(name, data, location=loc)
+
+            case TokenType.ASSEMBLY:
+                loc = self.peek_loc()
+                tok = self.consume(TokenType.ASSEMBLY, error="Expected inline assembly block")
+                block = tok.literal
+                return Assembly(block.lines, block.substitutions, location=loc)
 
             case _:
                 loc = self.peek_loc()
@@ -466,7 +473,7 @@ class Parser:
                 left = Constant(self.consume(TokenType.STRING), location=loc)
             else:
                 raise self.error(
-                    f"Statement, Expression, or operator {self.peek()} could not be found."
+                    f"Statement, Expression, or Operator {self.peek()} could not be found."
                 )
 
         post_token = self.peek()

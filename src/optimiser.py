@@ -1,4 +1,21 @@
 class Optimiser:
+    _FOLDABLE_PRODUCERS = {
+        "eval": True,
+        "evalr": True,
+        "concat": False,
+    }
+
+    _LITERAL_PRODUCERS = {"buffer", "concat"}
+
+    _SUBSTITUTION_CONSUMERS = {
+        "eq", "gtb", "ltb", "geb", "leb",
+        "jmp", "jmpif", "jmpnot",
+        "push", "send", "splitter", "split",
+        "concat",
+    }
+
+    _JUMP_OPS = {"jmp", "jmpif", "jmpnot"}
+
     def optimise_program(self, program: list[tuple[str, list]]) -> list[tuple[str, list]]:
         while True:
             program, mutated = self._optimise_pass(program)
@@ -11,6 +28,9 @@ class Optimiser:
         optimized = []
         mutated = False
         skip_next = 0
+
+        dynamic_jump = self._has_dynamic_jump(program)
+        live_labels = self._live_dest_labels(program)
 
         for i in range(len(program)):
             if skip_next > 0:
@@ -25,28 +45,19 @@ class Optimiser:
                 mutated = True
                 continue
 
-            if (
-                i + 2 < len(program)
-                and program[i][0] == "eval"
-                and program[i + 1][0] == "save"
-                and program[i + 2][0] == "eval"
-            ):
-                temp = program[i + 1][1][0]
+            folded = self._try_fold_temp(program, i)
+            if folded is not None:
+                optimized.append(folded)
+                skip_next = 2
+                mutated = True
+                continue
 
-                if temp.startswith("t_"):
-                    expr1 = program[i][1][0]
-                    expr2 = program[i + 2][1][0]
-
-                    placeholder = f"${temp}$"
-
-                    if expr2.count(placeholder) == 1:
-                        optimized.append(
-                            ("eval", [expr2.replace(placeholder, f"({expr1})")])
-                        )
-
-                        skip_next = 2
-                        mutated = True
-                        continue
+            folded = self._try_fold_into_consumer(program, i)
+            if folded is not None:
+                optimized.append(folded)
+                skip_next = 2
+                mutated = True
+                continue
 
             if i < len(program) - 1:
                 action = self._check_merge(program, i)
@@ -56,6 +67,10 @@ class Optimiser:
                     mutated = True
                     continue
 
+            if self._is_dead_dest(program, i, dynamic_jump, live_labels):
+                mutated = True
+                continue
+
             if self._is_dead_store(program, i):
                 mutated = True
                 continue
@@ -63,6 +78,63 @@ class Optimiser:
             optimized.append(program[i])
 
         return optimized, mutated
+
+
+    def _try_fold_temp(self, program, i):
+        op, args = program[i]
+
+        if op not in self._FOLDABLE_PRODUCERS:
+            return None
+
+        if not (
+            i + 2 < len(program)
+            and program[i + 1][0] == "save"
+            and program[i + 2][0] == op
+        ):
+            return None
+
+        temp = program[i + 1][1][0]
+        if not temp.startswith("t_"):
+            return None
+
+        expr1 = args[0]
+        expr2 = program[i + 2][1][0]
+        placeholder = f"${temp}$"
+
+        if expr2.count(placeholder) != 1:
+            return None
+
+        wrap = self._FOLDABLE_PRODUCERS[op]
+        replacement = f"({expr1})" if wrap else expr1
+
+        return (op, [expr2.replace(placeholder, replacement)])
+
+
+    def _try_fold_into_consumer(self, program, i):
+        op, args = program[i]
+
+        if op not in self._LITERAL_PRODUCERS:
+            return None
+
+        if not (i + 2 < len(program) and program[i + 1][0] == "save"):
+            return None
+
+        consumer_op, consumer_args = program[i + 2]
+        if consumer_op not in self._SUBSTITUTION_CONSUMERS or not consumer_args:
+            return None
+
+        temp = program[i + 1][1][0]
+        if not temp.startswith("t_"):
+            return None
+
+        expr1 = args[0]
+        consumer_expr = consumer_args[0]
+        placeholder = f"${temp}$"
+
+        if consumer_expr.count(placeholder) != 1:
+            return None
+
+        return (consumer_op, [consumer_expr.replace(placeholder, expr1)])
 
 
     def _check_merge(self, program: list[tuple[str, list]], i: int) -> bool | None:
@@ -171,3 +243,31 @@ class Optimiser:
                 return True
 
         return True
+
+
+    # MARK: dead destination elimination
+    def _is_substituted_target(self, target) -> bool:
+        return isinstance(target, str) and target.startswith("$") and target.endswith("$")
+
+    def _has_dynamic_jump(self, program) -> bool:
+        for op, args in program:
+            if op in self._JUMP_OPS and args and self._is_substituted_target(args[0]):
+                return True
+        return False
+
+    def _live_dest_labels(self, program) -> set:
+        labels = set()
+        for op, args in program:
+            if op in self._JUMP_OPS and args and not self._is_substituted_target(args[0]):
+                labels.add(args[0])
+        return labels
+
+    def _is_dead_dest(self, program, i, dynamic_jump: bool, live_labels: set) -> bool:
+        if dynamic_jump:
+            return False
+
+        op, args = program[i]
+        if op != "dest" or not args:
+            return False
+
+        return args[0] not in live_labels

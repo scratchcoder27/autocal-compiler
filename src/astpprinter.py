@@ -1,4 +1,4 @@
-from ast_nodes import Function
+from ast_nodes import Assembly, Function
 from stmt import *
 from expr import *
 from enum import Enum, auto
@@ -407,5 +407,22 @@ class AstPrinter(StmtVisitor, ExprVisitor):
             f"{val}\n"
             f"{indent}    idx=\n"
             f"{idx}\n"
+            f"{indent})"
+        )
+    
+    def visit_assembly_stmt(self, expr: Assembly):
+        indent = self._indent()
+
+        self.level += 1
+        lines_str = "\n".join(f"{self._indent()}    {line}" for line in expr.lines)
+        subs_str = ", ".join(f"{k} -> {v}" for k, v in expr.substitutions.items())
+        self.level -= 1
+
+        return (
+            f"{indent}Inline Assembly(\n"
+            f"{indent}    substitutions=({subs_str})\n"
+            f"{indent}    body=(\n"
+            f"{lines_str}\n"
+            f"{indent}    )\n"
             f"{indent})"
         )

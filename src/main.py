@@ -22,6 +22,7 @@ from subprocess import run
 
 from codegen import CodeGenException, CodeGenerator
 import lexer
+import inline_asm
 from optimiser import Optimiser
 import parser
 import loop_labelling
@@ -90,8 +91,16 @@ def preprocess(input_code : list[lexer.Token]) -> tuple[list[lexer.Token], dict]
 
     return val
 
+# MARK: INLINE ASSEMBLY
 def fix_inline_asm(input_code : list[lexer.Token]) -> list[lexer.Token]:
-    return input_code
+    try:
+        return inline_asm.fix_inline_asm(input_code)
+    except inline_asm.InlineAsmError as e:
+        raise CompileError(
+            f"{colors.BRIGHT_RED}Assembly Error: {colors.BRIGHT_BLUE}{e}{colors.RESET}",
+            line_no=e.line_no,
+            file_no=e.file_no,
+        )
 
 # MARK: PARSE
 def parsing(lexed_tokens : list[lexer.Token]) -> Program:
@@ -176,7 +185,6 @@ if __name__ == "__main__":
             for token in lexed_tokens:
                 print(f"{colors.BRIGHT_CYAN}{token.type.name}: {colors.BRIGHT_YELLOW}`{token.lexeme.replace("\n", "<newline>")}`{colors.RESET}")
             exit()
-
 
         parsed = parsing(lexed_tokens)
         

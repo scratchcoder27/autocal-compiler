@@ -100,6 +100,27 @@ class Preprocessor:
                                     expanded_body.extend(arg_map[token.lexeme])
                                 else:
                                     expanded_body.append(token)
+
+                            joined_body = []
+                            for tok in expanded_body:
+                                if len(joined_body) > 0 and joined_body[-1].lexeme == "&":
+                                    joined_body.pop()
+                                    left_tok = joined_body.pop()
+                                    
+                                    combined_lexeme = left_tok.lexeme + tok.lexeme
+                                    
+                                    merged_tok = Token(
+                                        TokenType.IDENTIFIER, 
+                                        combined_lexeme, 
+                                        None, 
+                                        left_tok.line_no, 
+                                        left_tok.file_no
+                                    )
+                                    joined_body.append(merged_tok)
+                                else:
+                                    joined_body.append(tok)
+                                    
+                            expanded_body = joined_body
                             
                             self.input_code = self.input_code[:start_pos] + expanded_body + self.input_code[self.position:]
                             self.position = start_pos
@@ -168,10 +189,29 @@ class Preprocessor:
                     to_replace = []
                     while True:
                         val = self.advance()
+                        while val.type in {TokenType.INDENT, TokenType.DEDENT}:
+                            val = self.advance()
+                        if val.type is TokenType.BITWISE_OR:
+                            replace_type = self.peek()
+                            match replace_type.lexeme:
+                                case "indent":
+                                    to_replace.append(Token(TokenType.INDENT, "    ", None, val.line_no, val.file_no))
+                                case "dedent":
+                                    to_replace.append(Token(TokenType.DEDENT, "    ", None, val.line_no, val.file_no))
+                                case _:
+                                    raise PreprocessError(f"Invalid replacement in macro/define (|{replace_type.lexeme}|)")
+                            self.advance()
+                            if self.peek().type is TokenType.BITWISE_OR:
+                                self.advance()
+                            else:
+                                raise PreprocessError(f"No closing '|' in macro/define (|{replace_type.lexeme}|)")
+                            continue
                         if val.type in {TokenType.NEWLINE, TokenType.EOF}:
                             break
                         if val.type == TokenType.BACKSLASH:
+                            if self.peek().type is TokenType.COLON:    self.advance()
                             next_tok = self.peek()
+                            
                             if next_tok.type == TokenType.NEWLINE:
                                 self.advance()
                                 continue
@@ -181,11 +221,13 @@ class Preprocessor:
                                 to_replace.append(Token(TokenType.NEWLINE, "", None, val.line_no, val.file_no))
                                 
                                 if self.peek().type == TokenType.NEWLINE:
-                                    self.advance()
+                                    self.advance()                                
                                 continue
                         
                         to_replace.append(val)
                     self.defines[name_key] = (args, to_replace)
+                    while self.peek().type in {TokenType.INDENT, TokenType.DEDENT}:
+                        self.advance()
                 
                 case "undef":
                     name_tok = self.advance()

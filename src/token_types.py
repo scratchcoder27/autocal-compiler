@@ -19,8 +19,6 @@ class TokenType(Enum):
     QUESTION_MARK = auto()
     SEMICOLON = auto()
 
-
-
     BITWISE_AND = auto()
     BITWISE_OR = auto()
     BITWISE_XOR = auto()
