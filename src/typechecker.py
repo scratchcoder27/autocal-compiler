@@ -476,6 +476,18 @@ class TypeCheckingPass(StmtVisitor, ExprVisitor):
             location=expr.location,
         )
 
+        if expr.operator.type in (TokenType.LOGICAL_AND, TokenType.LOGICAL_OR):
+            if (
+                new_left.datatype is Datatypes.STRING
+                or new_right.datatype is Datatypes.STRING
+            ):
+                raise TypeError(
+                    f"Cannot perform operation '{expr.operator.lexeme}' on strings",
+                    *expr.location,
+                )
+            val.datatype = Datatypes.INT
+            return val
+
         if (
             new_left.datatype is Datatypes.STRING
             or new_right.datatype is Datatypes.STRING

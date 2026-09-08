@@ -96,7 +96,14 @@ class CodeGenerator(ExprVisitor, StmtVisitor):
 
     def _arith_opcode(self, datatype) -> str:
         return "evalr" if datatype is Datatypes.INT else "eval"
-    
+
+    def _constant_bool_value(self, expr: Expr) -> bool | None:
+        if not isinstance(expr, Constant):
+            return None
+        if expr.value.type not in (TokenType.INT, TokenType.FLOAT):
+            return None
+        return expr.value.literal != 0
+
     def _emit_logical_not(self, expr: Expr) -> str:
         result_var = self.next_tmp()
         lbl_false = self.next_label("not_false")
@@ -167,12 +174,35 @@ class CodeGenerator(ExprVisitor, StmtVisitor):
         self.add_stmt("dest", lbl_end)
         return var
 
+    def emit_logical_combine(self, expr: BinaryExpr):
+        is_or = expr.operator.type is TokenType.LOGICAL_OR
+        short_circuit_lbl = self.next_label("or_short" if is_or else "and_short")
+        end_lbl = self.next_label("or_end" if is_or else "and_end")
+
+        self.generate_truthiness(expr.left)
+        self.add_stmt("jmpif" if is_or else "jmpnot", short_circuit_lbl)
+
+        self.generate_truthiness(expr.right)
+        self.add_stmt("jmp", end_lbl)
+
+        self.add_stmt("dest", short_circuit_lbl)
+        self.add_stmt("buffer", "true" if is_or else "false")
+
+        self.add_stmt("dest", end_lbl)
+
     def generate_truthiness(self, expr: Expr):
         if isinstance(expr, BinaryExpr) and expr.operator.lexeme in ["==", "!=", ">", "<", ">=", "<="]:
             self.emit_native_comparison(expr)
+        elif isinstance(expr, BinaryExpr) and expr.operator.type in (TokenType.LOGICAL_AND, TokenType.LOGICAL_OR):
+            self.emit_logical_combine(expr)
         else:
+            is_const = isinstance(expr, Constant)
             var = self._eval_expr(expr)
-            self.add_stmt("load", var)
+
+            if is_const:
+                self.add_stmt("buffer", str(var))
+            else:
+                self.add_stmt("load", var)
             self.add_stmt("eq", 0)
             
             # Invert it so any non-zero value evaluates to "true"
@@ -310,22 +340,29 @@ class CodeGenerator(ExprVisitor, StmtVisitor):
 
     # MARK: looping
     def visit_while_stmt(self, stmt: While):
+        const_val = self._constant_bool_value(stmt.condition)
+
+        if const_val is False:
+            return
+
         start_lbl = self.next_label("while_start")
         end_lbl = self.next_label("while_end")
-        
+
         self.add_stmt("dest", start_lbl)
-        
-        self.generate_truthiness(stmt.condition) # Injects 'true'/'false' directly
-        self.add_stmt("jmpnot", end_lbl)
-        
+
+        if const_val is None:
+            self.generate_truthiness(stmt.condition) # Injects 'true'/'false' directly
+            self.add_stmt("jmpnot", end_lbl)
         self.loops.append({"start": start_lbl, "end": end_lbl})
         stmt.body.accept(self)
         self.add_stmt("jmp", start_lbl)
-        
+
         self.add_stmt("dest", end_lbl)
         self.loops.pop()
 
     def visit_dowhile_stmt(self, stmt: DoWhile):
+        const_val = self._constant_bool_value(stmt.condition)
+
         start_lbl = self.next_label("dowhile_start")
         end_lbl = self.next_label("dowhile_end")
         
@@ -333,10 +370,13 @@ class CodeGenerator(ExprVisitor, StmtVisitor):
         self.loops.append({"start": start_lbl, "end": end_lbl})
         
         stmt.body.accept(self)
-        
-        self.generate_truthiness(stmt.condition) # Injects 'true'/'false' directly
-        self.add_stmt("jmpif", start_lbl)
-        
+
+        if const_val is True:
+            self.add_stmt("jmp", start_lbl)
+        elif const_val is None:
+            self.generate_truthiness(stmt.condition) # Injects 'true'/'false' directly
+            self.add_stmt("jmpif", start_lbl)
+
         self.add_stmt("dest", end_lbl)
         self.loops.pop()
     
@@ -548,6 +588,10 @@ class CodeGenerator(ExprVisitor, StmtVisitor):
             self.emit_native_comparison(expr)
             return self.convert_buffer_to_bool_int()
 
+        if expr.operator.type in (TokenType.LOGICAL_AND, TokenType.LOGICAL_OR):
+            self.generate_truthiness(expr)
+            return self.convert_buffer_to_bool_int()
+
         left_const, v1_name = self._operand_name(expr.left)
         if not left_const:
             self.pending_protect.append(v1_name)
@@ -576,7 +620,7 @@ class CodeGenerator(ExprVisitor, StmtVisitor):
         base_operator = expr.operator.lexeme.replace("=", "").strip()
 
         if expr.datatype is Datatypes.STRING and base_operator == "+":
-            self.add_stmt("concat", f"${mangled}$ {val_var}")
+            self.add_stmt("concat", f"${mangled}${val_var}")
         else:
             opcode = self._arith_opcode(expr.datatype)
             self.add_stmt(opcode, f"${mangled}$ {base_operator} {val_var}")

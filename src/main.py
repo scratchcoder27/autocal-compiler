@@ -177,8 +177,8 @@ if __name__ == "__main__":
         parsed_files: list[str] = [args.input_file]
         lexed_tokens = lex(input_code, parsed_files, args.input_file)
         
-        lexed_tokens = fix_inline_asm(lexed_tokens)
         lexed_tokens, options = preprocess(lexed_tokens)
+        lexed_tokens = fix_inline_asm(lexed_tokens)
 
         if args.debug_lexing:
             print(f"{colors.BRIGHT_MAGENTA}Lexing output:{colors.RESET}")

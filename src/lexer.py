@@ -180,6 +180,8 @@ class Lexer:
                 self.add_token(TokenType.QUESTION_MARK)
             case "#":
                 self.add_token(TokenType.PREPROCESS)
+            case "$":
+                self.add_token(TokenType.DOLLAR)
             case "\\":
                 self.add_token(TokenType.BACKSLASH)
             case "+":

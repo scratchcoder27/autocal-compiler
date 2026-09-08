@@ -18,6 +18,7 @@ class TokenType(Enum):
     NEWLINE = auto()
     QUESTION_MARK = auto()
     SEMICOLON = auto()
+    DOLLAR = auto()
 
     BITWISE_AND = auto()
     BITWISE_OR = auto()
