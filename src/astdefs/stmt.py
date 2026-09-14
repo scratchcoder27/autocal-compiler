@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from node import Node
+from astdefs.node import Node
 from tokens import Token
 from datatypes import Datatypes
 from token_types import TokenType

@@ -1,9 +1,9 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from expr import Expr
-from node import Node
-from stmt import Stmt, VariableDeclaration
+from astdefs.expr import Expr
+from astdefs.node import Node
+from astdefs.stmt import Stmt, VariableDeclaration
 from tokens import Token
 from datatypes import Datatypes
 

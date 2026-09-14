@@ -19,24 +19,25 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 import argparse
 from os import getcwd
 from subprocess import run
+from sys import exit
 
-from codegen import CodeGenException, CodeGenerator
-import lexer
-import inline_asm
-from optimiser import Optimiser
-import parser
-import loop_labelling
-from preprocessor import Preprocessor, PreprocessError
-from typechecker import TypeCheckingPass, TypeError
-from deadcodeelimination import DeadFunctionEliminationPass
-from constantfolding import ConstantFoldingPass, SemanticError
+from backend.codegen import CodeGenException, CodeGenerator
+import frontend.lexer as lexer
+import frontend.inline_asm as inline_asm
+from backend.optimiser import Optimiser
+import frontend.parser as parser
+import middleend.loop_labelling as loop_labelling
+from frontend.preprocessor import Preprocessor, PreprocessError
+from middleend.typechecker import TypeCheckingPass, TypeError
+from middleend.deadcodeelimination import DeadFunctionEliminationPass
+from middleend.constantfolding import ConstantFoldingPass, SemanticError
 
-import colors
+import colors as colors
 
 from token_types import TokenType
-from ast_nodes import *
-from stmt import *
-from expr import *
+from astdefs.ast_nodes import *
+from astdefs.stmt import *
+from astdefs.expr import *
 
 import traceback
 

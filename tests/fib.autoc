@@ -1,6 +1,10 @@
 #pragma clockspeed 20
 
-#include "defines.txt"
+#define NUMBER_DISPLAY_PORT "display_num"
+#define CONTROLLER_PORT "control"
+
+#define MOD(a, b) (a - b * floor(a / b))
+
 #define NUM 35
 
 // vars

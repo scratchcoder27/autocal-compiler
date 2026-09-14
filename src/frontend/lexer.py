@@ -1,6 +1,22 @@
 from token_types import *
 from tokens import Token
 import os
+import sys
+
+def get_base_dir() -> str:
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):  # pyinstaller
+        return sys._MEIPASS
+
+    current = os.path.dirname(os.path.abspath(__file__))
+    while True:
+        if os.path.isdir(os.path.join(current, "stdlib")):
+            return current
+        parent = os.path.dirname(current)
+        if parent == current:
+            raise RuntimeError(
+                f"Could not locate a 'stdlib' directory above {os.path.abspath(__file__)}"
+            )
+        current = parent
 
 class LexingError(Exception):
     def __init__(self, message: str, line_no: int = None, file_no: int = None):
@@ -336,7 +352,7 @@ class Lexer:
             self.current_indent = indent_level
         else:
             raise LexingError(f"Indentation error: Indentation must be a multiple of 4 spaces (line {self.line})", line_no=self.line, file_no=self.file_no)
-    
+
     # MARK: IDENTIFIERS
     def identifier(self) -> None:
         while self.peek().isalnum() or self.peek() == '_':
@@ -358,7 +374,7 @@ class Lexer:
                     loc = loc.strip()
                     if loc.startswith('<') and loc.endswith('>'):
                         module_name = loc[1:-1].strip()
-                        compiler_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                        compiler_dir = get_base_dir()
                         loc = os.path.join(compiler_dir, "stdlib", f"{module_name}.autoc")
 
                     else:

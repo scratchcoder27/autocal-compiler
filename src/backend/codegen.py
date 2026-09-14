@@ -1,9 +1,9 @@
 import re
 
-import colors
-from expr import *
-from stmt import *
-from ast_nodes import *
+import colors as colors
+from astdefs.expr import *
+from astdefs.stmt import *
+from astdefs.ast_nodes import *
 from token_types import TokenType
 from tokens import Token
 from scope import Scope

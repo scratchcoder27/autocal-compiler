@@ -1,6 +1,6 @@
-from ast_nodes import Assembly, Function
-from stmt import *
-from expr import *
+from astdefs.ast_nodes import Assembly, Function
+from astdefs.stmt import *
+from astdefs.expr import *
 from enum import Enum, auto
 
 class Datatypes(Enum):

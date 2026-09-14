@@ -1,4 +1,0 @@
-#define NUMBER_DISPLAY_PORT "display_num"
-#define CONTROLLER_PORT "control"
-
-#define MOD(a, b) (a - b * floor(a / b))

@@ -1,6 +1,11 @@
 .venv/*
 test/*
 bin/*
-src/__pycache__/*
 testing/*
 .vscode/*
+build/*
+dist/*
+**/__pycache__/*
+
+
+*.spec

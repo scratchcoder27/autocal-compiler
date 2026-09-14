@@ -1,6 +1,10 @@
 #pragma clockspeed 500
 
-#include "defines.txt"
+#define NUMBER_DISPLAY_PORT "display_num"
+#define CONTROLLER_PORT "control"
+
+#define MOD(a, b) (a - b * floor(a / b))
+
 #define NUM 20
 
 var prefix_write = "write!"

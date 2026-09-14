@@ -1,6 +1,6 @@
-from ast_nodes import Assembly, Block, Function, VariableDeclaration, Program
-from stmt import *
-from expr import *
+from astdefs.ast_nodes import Assembly, Block, Function, VariableDeclaration, Program
+from astdefs.stmt import *
+from astdefs.expr import *
 from token_types import TokenType
 from scope import Scope
 from variable import Variable

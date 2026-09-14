@@ -1,39 +1,39 @@
-from ast_nodes import Assembly, Block, Function, VariableDeclaration, Program
-from stmt import *
-from expr import *
+from astdefs.ast_nodes import Assembly, Block, Function, VariableDeclaration, Program
+from astdefs.stmt import *
+from astdefs.expr import *
+import operator
 
-class DeadFunctionEliminationPass(StmtVisitor, ExprVisitor):
-    def __init__(self, call_graph: dict[str, set[str]]):
-        self.call_graph = call_graph
-        self.reachable: set[str] = self._compute_reachable()
 
-    def _compute_reachable(self) -> set[str]:
-        reachable = set()
-        worklist = list(self.call_graph.get("<global>", set()))
-        while worklist:
-            name = worklist.pop()
-            if name in reachable:
-                continue
-            reachable.add(name)
-            worklist.extend(self.call_graph.get(name, set()))
-        return reachable
+class SemanticError(Exception):
+    def __init__(
+        self,
+        message: str,
+        file_no: int | None = None,
+        line_no: int | None = None,
+    ):
+        super().__init__(message)
+        self.file_no = file_no
+        self.line_no = line_no
 
-    def _is_dead(self, func_name: str) -> bool:
-        return func_name not in self.reachable
+        
 
-    def eliminate(self, program):
-        new_stmts = []
-        for stmt in program.stmts:
-            if isinstance(stmt, Function) and self._is_dead(stmt.name):
-                continue
-            if isinstance(stmt, FunctionDeclarationStmt) and self._is_dead(stmt.name):
-                continue
-            new_stmts.append(stmt.accept(self))
-        return Program(new_stmts)
+class ConstantFoldingPass(StmtVisitor, ExprVisitor):
+    def __init__(self):
+        self.OPERATIONS = {
+            TokenType.PLUS: operator.add,
+            TokenType.MINUS: operator.sub,
+            TokenType.STAR: operator.mul,
+            TokenType.SLASH: operator.truediv,
+        }
 
-    # MARK: Statements
 
-    def visit_function_stmt(self, stmt: Function):
+    def fold(self, program):
+        return Program(
+            [stmt.accept(self) for stmt in program.stmts],
+        )
+    
+    # MARK: Statments
+    def visit_function_stmt(self, stmt : Function):
         body = stmt.body.accept(self)
         return Function(stmt.name, stmt.params, stmt.datatype, body, location=stmt.location)
 
@@ -46,13 +46,7 @@ class DeadFunctionEliminationPass(StmtVisitor, ExprVisitor):
         return Compound(new_block, location=stmt.location)
 
     def visit_block_stmts(self, stmt):
-        new_body = []
-        for item in stmt.body:
-            if isinstance(item, Function) and self._is_dead(item.name):
-                continue
-            if isinstance(item, FunctionDeclarationStmt) and self._is_dead(item.name):
-                continue
-            new_body.append(item.accept(self))
+        new_body = [item.accept(self) for item in stmt.body]
         return Block(new_body, location=stmt.location)
 
     def visit_variabledeclaration_stmt(self, stmt):
@@ -78,9 +72,11 @@ class DeadFunctionEliminationPass(StmtVisitor, ExprVisitor):
             location=stmt.location,
         )
 
-    def visit_while_stmt(self, stmt: While):
+    def visit_while_stmt(self, stmt : While):
         new_cond = stmt.condition.accept(self)
+
         new_body = stmt.body.accept(self)
+
         return While(
             new_cond,
             new_body,
@@ -88,9 +84,11 @@ class DeadFunctionEliminationPass(StmtVisitor, ExprVisitor):
             location=stmt.location,
         )
 
-    def visit_dowhile_stmt(self, stmt: DoWhile):
+    def visit_dowhile_stmt(self, stmt : DoWhile):
         new_cond = stmt.condition.accept(self)
+
         new_body = stmt.body.accept(self)
+
         return DoWhile(
             new_cond,
             new_body,
@@ -99,12 +97,12 @@ class DeadFunctionEliminationPass(StmtVisitor, ExprVisitor):
         )
 
     def visit_break_stmt(self, stmt):
-        return stmt
+       return stmt
 
     def visit_continue_stmt(self, stmt):
         return stmt
-
-    def visit_inbuiltprocedurearg1_stmt(self, stmt: InbuiltProcedureArg1):
+    
+    def visit_inbuiltprocedurearg1_stmt(self, stmt : InbuiltProcedureArg1):
         expr = stmt.val.accept(self)
         return InbuiltProcedureArg1(stmt.type, expr, location=stmt.location)
 
@@ -126,17 +124,14 @@ class DeadFunctionEliminationPass(StmtVisitor, ExprVisitor):
             location=stmt.location,
         )
 
-    def visit_functiondeclarationstmt_stmt(self, stmt):
-        return stmt
-
     # MARK: Expressions
 
-    def visit_functioncall_expr(self, expr: FunctionCall):
+    def visit_functioncall_expr(self, expr : FunctionCall):
         params = [param.accept(self) for param in expr.params]
         obj = FunctionCall(
-            name=expr.name,
-            params=params,
-            location=expr.location,
+            name = expr.name,
+            params = params,
+            location=expr.location
         )
         obj.datatype = expr.datatype
         return obj
@@ -179,8 +174,21 @@ class DeadFunctionEliminationPass(StmtVisitor, ExprVisitor):
         obj.datatype = expr.datatype
         return obj
 
-    def visit_unaryexpr_expr(self, expr):
+    def visit_unaryexpr_expr(self, expr : UnaryExpr):
         new_operand = expr.expression.accept(self)
+
+        if isinstance(expr.expression, Constant):
+            val = None
+            if expr.operator.type is TokenType.MINUS:
+                if expr.datatype in (Datatypes.INT, Datatypes.FLOAT):
+                    val = -int(expr.expression.value.literal)
+                    val = int(val) if expr.datatype is Datatypes.INT else float(val)
+
+                    val = Token(TokenType.INT if expr.datatype is Datatypes.INT else TokenType.FLOAT, str(val), val, expr.location[0], expr.location[1])
+            
+            if val and isinstance(val, Token):
+                return Constant(val, location=expr.location)
+
         obj = UnaryExpr(
             expr.operator,
             new_operand,
@@ -189,9 +197,42 @@ class DeadFunctionEliminationPass(StmtVisitor, ExprVisitor):
         obj.datatype = expr.datatype
         return obj
 
-    def visit_binaryexpr_expr(self, expr):
-        new_left = expr.left.accept(self)
-        new_right = expr.right.accept(self)
+    def visit_binaryexpr_expr(self, expr : BinaryExpr):
+        new_left : Expr = expr.left.accept(self)
+        new_right : Expr = expr.right.accept(self)
+
+        if isinstance(new_left, Constant) and isinstance(new_right, Constant):
+            val = None
+            if expr.datatype is Datatypes.STRING:
+                if expr.operator.type is TokenType.PLUS:
+                    new_str = str(new_left.value.lexeme.strip("\"")) + str(new_right.value.lexeme.strip("\""))
+                    val = Token(TokenType.STRING, lexeme=f"\"{new_str}\"", literal=new_str, line_no=expr.location[0], file_no=expr.location[1])
+
+            elif expr.datatype in(Datatypes.FLOAT, Datatypes.INT):
+                val = None
+                val1 = int(new_left.value.literal) if expr.datatype is Datatypes.INT else float(new_left.value.literal)
+                val2 = int(new_right.value.literal) if expr.datatype is Datatypes.INT else float(new_right.value.literal)
+
+                try:
+                    if expr.operator.type in self.OPERATIONS:
+                        val = self.OPERATIONS[expr.operator.type](val1, val2)
+                        val = int(val) if expr.datatype is Datatypes.INT else float(val)
+                except (ValueError, ZeroDivisionError) as e:
+                    if isinstance(e, ZeroDivisionError):
+                        raise SemanticError("Division by zero is not allowed", expr.location[0], expr.location[1])
+                    val = None
+                
+                if val:
+                    val = Token(TokenType.INT if expr.datatype is Datatypes.INT else TokenType.FLOAT, str(val), val, line_no=expr.location[0], file_no=expr.location[1])
+                
+            if val:
+                obj = Constant(
+                    value=val,
+                    location=expr.location
+                )
+                obj.datatype = expr.datatype
+                return obj
+
         obj = BinaryExpr(
             expr.operator,
             new_left,
@@ -234,7 +275,7 @@ class DeadFunctionEliminationPass(StmtVisitor, ExprVisitor):
         )
         obj.datatype = expr.datatype
         return obj
-
+    
     def visit_inbuiltfunctionarg2_expr(self, expr: InbuiltFunctionArg2):
         val1 = expr.val1.accept(self)
         val2 = expr.val2.accept(self)
@@ -246,15 +287,20 @@ class DeadFunctionEliminationPass(StmtVisitor, ExprVisitor):
         )
         obj.datatype = expr.datatype
         return obj
-
-    def visit_inbuiltfunctionarg0_expr(self, expr: InbuiltFunctionArg0):
+    
+    
+    def visit_inbuiltfunctionarg0_expr(self, expr : InbuiltFunctionArg0):
         obj = InbuiltFunctionArg0(
             expr.type,
             location=expr.location,
         )
         obj.datatype = expr.datatype
         return obj
-
+    
+    
+    def visit_functiondeclarationstmt_stmt(self, expr):
+        return expr
+    
     def visit_stringslice_expr(self, expr: StringSlice):
         value = expr.value.accept(self)
         left = expr.left.accept(self) if expr.left else None
