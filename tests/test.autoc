@@ -1,0 +1,19 @@
+#pragma clockspeed 20
+
+#define TEXT_PORT "control"
+#include <termio>
+#include <input>
+
+var x = getInt("Enter a char: ")
+switch x[0]:
+    case 1:
+    case 2:
+        PRINT("A")
+        break
+    case 3:
+        PRINT("C")
+    case 4:
+    case 5:
+    case 5:
+        PRINT("D")
+        break

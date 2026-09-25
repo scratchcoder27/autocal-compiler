@@ -35,6 +35,12 @@
     var copy_name = name \n \
     var copy_name&idx = name&idx
 
+#define VECTOR_POP(name) \
+    if name&idx > 0: \n |indent| \
+        var name&poplen = len(split(name, name&idx)) \n \
+        name = name[:len(name) - name&poplen - 1] \n \
+        name&idx-- |dedent|
+
 def vector_get_idx(v : str, element : str) -> int:
     var i = 0
 

@@ -39,6 +39,11 @@
     var copy_name&size = name&size \n \
     var copy_name&idx = name&idx
 
+#define ARRAY_POP(name) \
+    if name&idx > 0: \n |indent| \
+        name = name[:((name&idx - 1) * name&size)] \n \
+        name&idx-- |dedent|
+
 def array_pad(value : str, size : int) -> str:
     while len(value) < size:
         value = "0" + value
