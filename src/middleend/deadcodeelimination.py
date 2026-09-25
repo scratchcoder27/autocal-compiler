@@ -126,6 +126,15 @@ class DeadFunctionEliminationPass(StmtVisitor, ExprVisitor):
             location=stmt.location,
         )
 
+    def visit_switch_stmt(self, stmt):
+        return Switch(stmt.expression.accept(self),
+                    [c.accept(self) for c in stmt.cases],
+                    location=stmt.location)
+
+    def visit_switchcase_stmt(self, stmt):
+        return SwitchCase(stmt.value.accept(self), stmt.body.accept(self),
+                        location=stmt.location)
+
     def visit_functiondeclarationstmt_stmt(self, stmt):
         return stmt
 

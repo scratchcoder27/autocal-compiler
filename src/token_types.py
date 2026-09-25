@@ -67,6 +67,9 @@ class TokenType(Enum):
     ELSE = auto()
     RETURN = auto()
 
+    SWITCH = auto()
+    CASE = auto()
+
     SET_SPLITTER = auto()
     SPLIT = auto()
     SPLITCOUNT = auto()

@@ -226,8 +226,7 @@ if __name__ == "__main__":
                     if item[0] != "buffer":
                         f.write(f"{line.strip()}\n")
                     else:
-                        f.write(f"{line}\n")
-    
+                        f.write(f"{line}\n")    
         
     except CompileError as e:
         # traceback.print_exception(e)

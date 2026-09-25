@@ -19,6 +19,7 @@ class LoopLabellingPass(StmtVisitor, ExprVisitor):
     def __init__(self):
         self.loop_number = 0
         self.loop_stack = []
+        self.break_stack = []
 
     def label(self, program):
         return Program(
@@ -69,10 +70,13 @@ class LoopLabellingPass(StmtVisitor, ExprVisitor):
 
         self.loop_number += 1
         self.loop_stack.append(self.loop_number)
+        self.break_stack.append(self.loop_number)
 
         new_body = stmt.body.accept(self)
 
+        self.break_stack.pop()
         self.loop_stack.pop()
+
         return While(
             new_cond,
             new_body,
@@ -85,10 +89,13 @@ class LoopLabellingPass(StmtVisitor, ExprVisitor):
 
         self.loop_number += 1
         self.loop_stack.append(self.loop_number)
+        self.break_stack.append(self.loop_number)
 
         new_body = stmt.body.accept(self)
 
+        self.break_stack.pop()
         self.loop_stack.pop()
+
         return DoWhile(
             new_cond,
             new_body,
@@ -96,19 +103,21 @@ class LoopLabellingPass(StmtVisitor, ExprVisitor):
             location=stmt.location,
         )
 
+    # MARK: BREAK
     def visit_break_stmt(self, stmt):
         if not stmt.label:
             try:
-                label = self.loop_stack[-1]
+                label = self.break_stack[-1]
             except IndexError:
                 raise SemanticError(
-                    "Could not find matching while, do-while, or for loop for break statement",
+                    "Could not find matching loop or switch for break statement",
                     *stmt.location,
                 )
             return Break(label, location=stmt.location)
-
+        
         return Break(stmt.label, location=stmt.location)
 
+    # MARK: CONTINUE
     def visit_continue_stmt(self, stmt):
         if not stmt.label:
             try:
@@ -143,6 +152,20 @@ class LoopLabellingPass(StmtVisitor, ExprVisitor):
             data,
             location=stmt.location,
         )
+
+    def visit_switch_stmt(self, stmt):
+            subject = stmt.expression.accept(self)
+
+            self.loop_number += 1 # TODO: should probably rename this or separate this
+            self.break_stack.append(self.loop_number)
+            cases = [c.accept(self) for c in stmt.cases]
+            self.break_stack.pop()
+            
+            return Switch(subject, cases, location=stmt.location)
+
+    def visit_switchcase_stmt(self, stmt):
+        return SwitchCase(stmt.value.accept(self), stmt.body.accept(self),
+                        location=stmt.location)
 
     # MARK: Expressions
 

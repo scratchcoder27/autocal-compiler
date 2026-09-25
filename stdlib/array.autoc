@@ -1,0 +1,61 @@
+#ifndef LIB_ARRAY
+#define LIB_ARRAY
+
+//Fixed-width string array.
+
+#define ARRAY_CREATE(name, element_size) \
+    var name = "" \n \
+    var name&size = (element_size) \n \
+    var name&idx = 0
+
+#define ARRAY_APPEND(name, val) \
+    name += array_pad(toStr(val), name&size) \n \
+    name&idx++
+
+#define ARRAY_GET(name, idx) \
+    toInt(name[((idx) * name&size):(((idx) + 1) * name&size)])
+
+#define ARRAY_SET(name, idx, val) \
+    var name&setval = array_pad(toStr(val), name&size) \n \
+    var name&setpos = (idx) * name&size \n \
+    name = name[:name&setpos] + name&setval + name[(name&setpos + name&size):]
+
+#define ARRAY_GET_RAW(name) \
+    (name)
+
+#define ARRAY_GET_LEN(name) \
+    (name&idx)
+
+#define ARRAY_GET_IDX(name, element) \
+    array_get_idx(name, element, name&size)
+
+#define ARRAY_FROM_RAW(name, raw, element_size) \
+    var name = (raw) \n \
+    var name&size = (element_size) \n \
+    var name&idx = len(name) / name&size
+
+#define ARRAY_COPY(name, copy_name) \
+    var copy_name = name \n \
+    var copy_name&size = name&size \n \
+    var copy_name&idx = name&idx
+
+def array_pad(value : str, size : int) -> str:
+    while len(value) < size:
+        value = "0" + value
+
+    return value
+
+def array_get_idx(a : str, element : int, element_size : int) -> int:
+    var count = len(a) / element_size
+    var i = 0
+
+    while i < count:
+        if toInt(a[(i * element_size):((i + 1) * element_size)]) == element:
+            return i
+
+        i++
+
+    return -1
+
+
+#endif

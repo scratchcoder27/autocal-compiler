@@ -1,0 +1,81 @@
+#ifndef LIB_INPUT
+#define LIB_INPUT
+
+#include <bool>
+
+#ifndef LIB_IO
+#error "The termio library must be included to use terminal input"
+#endif
+
+#define GET_DATA_1 \
+    COMMAND("chan input") \n \
+    COMMAND("send None")
+
+#define GET_DATA_2 \
+    PRINT(prompt) \n \
+    while (listen("input") == "None"): \n \
+        |indent|endtick \n |dedent|
+
+#define _TEST(n) (val[i] == n)
+#define _TESTNUMBERS _TEST("1") or _TEST("2") or _TEST("3") or _TEST("4") or _TEST("5") or _TEST("6") or _TEST("7") or _TEST("8") or _TEST("9") or _TEST("0")
+
+def getString(prompt : str) -> str:
+    GET_DATA_1
+    CLEAR()
+    GET_DATA_2
+    return toStr(listen("input"))
+
+def getString(prompt : str, clear : bool) -> str:
+    GET_DATA_1
+    if clear:
+        CLEAR()
+    GET_DATA_2
+    return toStr(listen("input"))
+
+def getInt(prompt : str) -> int:
+    GET_DATA_1
+    CLEAR()
+    GET_DATA_2
+    return toInt(listen("input"))
+
+def getIntSafe(prompt : str) -> int:
+    GET_DATA_1
+    CLEAR()
+    GET_DATA_2
+    var val = listen("input")
+    for (var i = 1; i < len(val); i++):
+        if (not (_TESTNUMBERS)):
+            PRINT("ERROR: Invalid number " + val)
+    return toInt(val)
+
+def getInt(prompt : str, clear : bool) -> int:
+    GET_DATA_1
+    if clear:
+        CLEAR()
+    GET_DATA_2
+    return toInt(listen("input"))
+
+def getFloat(prompt : str) -> float:
+    GET_DATA_1
+    CLEAR()
+    GET_DATA_2
+    return toFloat(listen("input"))
+
+def getFloatSafe(prompt : str) -> float:
+    GET_DATA_1
+    CLEAR()
+    GET_DATA_2
+    var val = listen("input")
+    for (var i = 1; i < len(val); i++):
+        if (not ((val[i] == ".") or (_TESTNUMBERS))):
+            PRINT("ERROR: Invalid number " + val)
+    return toFloat(val)
+
+def getFloat(prompt : str, clear : bool) -> float:
+    GET_DATA_1
+    if clear:
+        CLEAR()
+    GET_DATA_2
+    return toFloat(listen("input"))
+
+#endif

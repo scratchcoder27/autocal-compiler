@@ -64,6 +64,14 @@ class StmtVisitor(ABC):
     def visit_inbuiltprocedurearg1_stmt(self, expr):
         pass
 
+    @abstractmethod
+    def visit_switch_stmt(self, expr):
+        pass
+
+    @abstractmethod
+    def visit_switchcase_stmt(self, expr):
+        pass
+
 
 
 class Stmt(Node, ABC):
@@ -191,5 +199,23 @@ class InbuiltProcedureArg1(Stmt):
 
     def accept(self, visitor):
         return visitor.visit_inbuiltprocedurearg1_stmt(self)
+
+
+@dataclass
+class Switch(Stmt):
+    expression: Expr
+    cases: list[SwitchCase]
+
+    def accept(self, visitor):
+        return visitor.visit_switch_stmt(self)
+
+
+@dataclass
+class SwitchCase(Stmt):
+    value: Expr
+    body: Stmt
+
+    def accept(self, visitor):
+        return visitor.visit_switchcase_stmt(self)
 
 

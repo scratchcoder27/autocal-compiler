@@ -99,7 +99,9 @@ def main():
             "InbuiltStatementNoarg : TokenType type",
             "SendStatement : Expr name, Expr data",
             "FunctionDeclarationStmt : str name",
-            "InbuiltProcedureArg1: TokenType type, Expr val"
+            "InbuiltProcedureArg1: TokenType type, Expr val",
+            "Switch : Expr expression, list[SwitchCase] cases",
+            "SwitchCase : Expr value, Stmt body",
         ],
     )
     define_ast(

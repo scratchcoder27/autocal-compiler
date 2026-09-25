@@ -165,6 +165,22 @@ class AstPrinter(StmtVisitor, ExprVisitor):
             f"{indent})"
         )
 
+    def visit_switch_stmt(self, stmt):
+        indent = self._indent()
+        self.level += 1
+        subject = stmt.expression.accept(self)
+        cases = "\n".join(c.accept(self) for c in stmt.cases)
+        self.level -= 1
+        return f"{indent}Switch(\n{subject}\n{cases}\n{indent})"
+
+    def visit_switchcase_stmt(self, stmt):
+        indent = self._indent()
+        self.level += 1
+        value = stmt.value.accept(self)
+        body = stmt.body.accept(self)
+        self.level -= 1
+        return f"{indent}Case(\n{value}\n{body}\n{indent})"
+
     def visit_expression_stmt(self, expr):
         return expr.expression.accept(self)
 

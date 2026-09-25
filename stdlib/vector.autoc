@@ -1,0 +1,48 @@
+#ifndef LIB_VECTOR
+#define LIB_VECTOR
+
+#define VECTOR_SEPARATOR "␞"
+
+// The "␀" prefix is necessary because the autocal currently
+// does not have a convenient empty-string literal.
+
+#define VECTOR_CREATE(name) \
+    set_splitter(VECTOR_SEPARATOR) \n \
+    var name&idx = 0 \n \
+    var name = "␀"
+
+#define VECTOR_APPEND(name, val) \
+    name += VECTOR_SEPARATOR + toStr(val) \n \
+    name&idx++
+
+#define VECTOR_GET(name, idx) \
+    split(name, (idx) + 1)
+
+#define VECTOR_GET_IDX(name, element) vector_get_idx(name, toString(element))
+
+#define VECTOR_GET_LEN(name) \
+    (name&idx)
+
+#define VECTOR_GET_RAW(name) \
+    (name)
+
+#define VECTOR_FROM_RAW(name, raw) \
+    set_splitter(VECTOR_SEPARATOR) \n \
+    var name = (raw) \n \
+    var name&idx = splitlen(name) - 1
+
+#define VECTOR_COPY(name, copy_name) \
+    var copy_name = name \n \
+    var copy_name&idx = name&idx
+
+def vector_get_idx(v : str, element : str) -> int:
+    var i = 0
+
+    while i < splitlen(v) - 1:
+        if split(v, i + 1) == element:
+            return i
+        i++
+
+    return -1
+
+#endif

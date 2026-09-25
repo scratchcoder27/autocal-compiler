@@ -1,3 +1,5 @@
+import re
+
 class Optimiser:
     _FOLDABLE_PRODUCERS = {
         "eval": True,
@@ -11,7 +13,7 @@ class Optimiser:
         "eq", "gtb", "ltb", "geb", "leb",
         "jmp", "jmpif", "jmpnot",
         "push", "send", "splitter", "split",
-        "concat",
+        "concat", "listen", "poll"
     }
 
     _JUMP_OPS = {"jmp", "jmpif", "jmpnot"}
@@ -19,6 +21,7 @@ class Optimiser:
     def optimise_program(self, program: list[tuple[str, list]]) -> list[tuple[str, list]]:
         while True:
             program, mutated = self._optimise_pass(program)
+            # self._check_temps(program)
             if not mutated:
                 break
         return program
@@ -75,9 +78,26 @@ class Optimiser:
                 mutated = True
                 continue
 
+            if self._is_dead_buffer(program, i):
+                mutated = True
+                continue
+
             optimized.append(program[i])
 
         return optimized, mutated
+
+    def _temp_use_count(self, program, temp):
+        placeholder = f"${temp}$"
+        count = 0
+        for op, args in program:
+            if op == "save" and args and args[0] == temp:
+                continue  # definitions aren't uses
+            for tok in args:
+                if tok == temp:
+                    count += 1
+                elif isinstance(tok, str):
+                    count += tok.count(placeholder)
+        return count
 
 
     def _try_fold_temp(self, program, i):
@@ -102,6 +122,9 @@ class Optimiser:
         placeholder = f"${temp}$"
 
         if expr2.count(placeholder) != 1:
+            return None
+
+        if self._temp_use_count(program, temp) != 1:
             return None
 
         wrap = self._FOLDABLE_PRODUCERS[op]
@@ -132,6 +155,9 @@ class Optimiser:
         placeholder = f"${temp}$"
 
         if consumer_expr.count(placeholder) != 1:
+            return None
+
+        if self._temp_use_count(program, temp) != 1:
             return None
 
         return (consumer_op, [consumer_expr.replace(placeholder, expr1)])
@@ -184,6 +210,21 @@ class Optimiser:
             return True
 
         return None
+
+    def _is_dead_buffer(self, program, i):
+        op, args = program[i]
+
+        if op != "buffer":
+            return False
+
+        # listen with an argument overwrites the buffer completely.
+        if i + 1 < len(program):
+            next_op, next_args = program[i + 1]
+
+            if next_op == "listen" and next_args:
+                return True
+
+        return False
 
 
     def _is_variable_used(self, program, target, exclude_index):
@@ -271,3 +312,19 @@ class Optimiser:
             return False
 
         return args[0] not in live_labels
+
+
+
+
+    def _check_temps(self, program):
+        defined = set()
+        for op, args in program:
+            for tok in args:
+                if isinstance(tok, str):
+                    for m in re.findall(r"\$(t_\d+)\$", tok):
+                        if m not in defined:
+                            raise RuntimeError(f"{m} used before definition in '{op} {tok}'")
+                    if tok.startswith("t_") and op == "load" and tok not in defined:
+                        raise RuntimeError(f"{tok} loaded before definition")
+            if op == "save" and args:
+                defined.add(args[0])

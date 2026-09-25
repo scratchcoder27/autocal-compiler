@@ -124,6 +124,15 @@ class ConstantFoldingPass(StmtVisitor, ExprVisitor):
             location=stmt.location,
         )
 
+    def visit_switch_stmt(self, stmt):
+        return Switch(stmt.expression.accept(self),
+                    [c.accept(self) for c in stmt.cases],
+                    location=stmt.location)
+
+    def visit_switchcase_stmt(self, stmt):
+        return SwitchCase(stmt.value.accept(self), stmt.body.accept(self),
+                        location=stmt.location)
+
     # MARK: Expressions
 
     def visit_functioncall_expr(self, expr : FunctionCall):
@@ -181,12 +190,20 @@ class ConstantFoldingPass(StmtVisitor, ExprVisitor):
             val = None
             if expr.operator.type is TokenType.MINUS:
                 if expr.datatype in (Datatypes.INT, Datatypes.FLOAT):
-                    val = -int(expr.expression.value.literal)
+                    literal_val = (
+                        int(expr.expression.value.literal)
+                        if expr.datatype is Datatypes.INT
+                        else float(expr.expression.value.literal)
+                    )
+                    val = -literal_val
                     val = int(val) if expr.datatype is Datatypes.INT else float(val)
 
-                    val = Token(TokenType.INT if expr.datatype is Datatypes.INT else TokenType.FLOAT, str(val), val, expr.location[0], expr.location[1])
-            
-            if val and isinstance(val, Token):
+                    val = Token(
+                        TokenType.INT if expr.datatype is Datatypes.INT else TokenType.FLOAT,
+                        str(val), val, expr.location[0], expr.location[1],
+                    )
+
+            if val is not None and isinstance(val, Token):
                 return Constant(val, location=expr.location)
 
         obj = UnaryExpr(
@@ -222,10 +239,10 @@ class ConstantFoldingPass(StmtVisitor, ExprVisitor):
                         raise SemanticError("Division by zero is not allowed", expr.location[0], expr.location[1])
                     val = None
                 
-                if val:
+                if val is not None:
                     val = Token(TokenType.INT if expr.datatype is Datatypes.INT else TokenType.FLOAT, str(val), val, line_no=expr.location[0], file_no=expr.location[1])
                 
-            if val:
+            if val is not None:
                 obj = Constant(
                     value=val,
                     location=expr.location

@@ -51,6 +51,9 @@ class Lexer:
             "str": TokenType.TYPE_STRING,
             "list": TokenType.TYPE_ARRAY,
 
+            "switch": TokenType.SWITCH,
+            "case": TokenType.CASE,
+
             "var": TokenType.VAR,
             "def": TokenType.DEF,
             "if": TokenType.IF,

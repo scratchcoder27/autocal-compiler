@@ -314,6 +314,36 @@ class Parser:
                 block = tok.literal
                 return Assembly(block.lines, block.substitutions, location=loc)
 
+            case TokenType.SWITCH:
+                loc = self.peek_loc()
+                self.advance()
+                subject = self.expression()
+                self.consume(TokenType.COLON, error="Expected ':' after switch subject")
+                self.consume(TokenType.NEWLINE, error="Expected newline after switch")
+                self.consume(TokenType.INDENT, error="Expected indented case blocks after switch")
+
+                cases = []
+                while self.peek().type not in {TokenType.DEDENT, TokenType.EOF}:
+                    if self.peek().type == TokenType.NEWLINE:
+                        self.advance()
+                        continue
+                    case_loc = self.peek_loc()
+                    self.consume(TokenType.CASE, error="Only 'case' blocks are allowed inside a switch (there is no default)")
+                    value = self.expression()
+                    self.consume(TokenType.COLON, error="Expected ':' after case value")
+                    if self.peek().type == TokenType.NEWLINE and self.peek(2).type == TokenType.INDENT:
+                        body = self.parse_block_or_stmt()
+                    else:
+                        if self.peek().type == TokenType.NEWLINE:
+                            self.advance()
+                        body = Block([Null(None, location=loc)], location=loc)
+                    cases.append(SwitchCase(value, body, location=case_loc))
+
+                if not cases:
+                    raise self.error("A switch needs at least one case")
+                self.consume(TokenType.DEDENT)
+                return Switch(subject, cases, location=loc)
+
             case _:
                 loc = self.peek_loc()
                 if self.peek().type in self.INBUILT_STATEMENTS:

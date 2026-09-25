@@ -1,0 +1,39 @@
+#pragma clockspeed 20
+
+#define TEXT_PORT "control"
+#include <termio>
+
+#include <array>
+#include <vector>
+
+CLEAR()
+
+PRINT("   ARRAYS    ")
+ARRAY_CREATE(arr, 2)
+
+ARRAY_APPEND(arr, 10)
+ARRAY_APPEND(arr, 20)
+ARRAY_APPEND(arr, 30)
+
+PRINT("ELEMENTS:")
+PRINT(ARRAY_GET(arr, 0) + ", " + ARRAY_GET(arr, 1) + ", " + ARRAY_GET(arr, 2))
+
+PRINT("ARRAY LENGTH:")
+PRINT(ARRAY_GET_LEN(arr))
+PRINT("RAW ARRAY STRING:")
+PRINT(ARRAY_GET_RAW(arr))
+
+PRINT("   VECTORS    ")
+VECTOR_CREATE(arr2)
+
+VECTOR_APPEND(arr2, 10)
+VECTOR_APPEND(arr2, 20)
+VECTOR_APPEND(arr2, 30)
+
+PRINT("ELEMENTS:")
+PRINT(VECTOR_GET(arr2, 0) + ", " + VECTOR_GET(arr2, 1) + ", " + VECTOR_GET(arr2, 2))
+
+PRINT("VECTOR LENGTH:")
+PRINT(VECTOR_GET_LEN(arr2))
+PRINT("RAW VECTOR STRING:")
+PRINT(VECTOR_GET_RAW(arr2))

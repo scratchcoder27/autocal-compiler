@@ -392,13 +392,12 @@ class CodeGenerator(ExprVisitor, StmtVisitor):
             )
         self.add_stmt("jmp", self.loops[-1]["end"])
     
-    def visit_continue_stmt(self, stmt : Continue):
-        if not self.loops:
-            raise CodeGenException(
-                "Continue statement outside of a loop.",
-                *stmt.location,
-            )
-        self.add_stmt("jmp", self.loops[-1]["start"])
+    def visit_continue_stmt(self, stmt: Continue):
+        for loop in reversed(self.loops):
+            if loop["start"] is not None:
+                self.add_stmt("jmp", loop["start"])
+                return
+        raise CodeGenException("Continue statement outside of a loop.", *stmt.location)
     
     # MARK: compound    
     def visit_compound_stmt(self, stmt : Compound):
@@ -438,6 +437,36 @@ class CodeGenerator(ExprVisitor, StmtVisitor):
             stmt.Else.accept(self)
             
         self.add_stmt("dest", end_lbl)
+
+    # MARK: SWITCHCASE
+    def visit_switch_stmt(self, stmt: Switch):
+        prefix = self.next_label("sw")
+        end_lbl = f"{prefix}_end"
+
+        keys = []
+        for case in stmt.cases:
+            if not isinstance(case.value, Constant):
+                raise CodeGenException("Case values must be int or string literals", *case.location)
+            key = str(case.value.value.literal)
+            if key in keys:
+                raise CodeGenException(f"Duplicate case value '{key}' in switch", *case.location)
+            keys.append(key)
+
+        subject = self._resolve_operand(stmt.expression)
+        self.add_stmt("concat", f"{prefix}_c_{subject}")
+        self.add_stmt("jmp", "$buffer$")
+
+        self.loops.append({"start": None, "end": end_lbl})
+        for key, case in zip(keys, stmt.cases):
+            self.add_stmt("dest", f"{prefix}_c_{key}")
+            case.body.accept(self)
+            # no jmp: falls through into the next case's dest
+        self.loops.pop()
+
+        self.add_stmt("dest", end_lbl)
+
+    def visit_switchcase_stmt(self, stmt):
+        pass  # handled in visit_switch_stmt
     
     # MARK: predefined
     def visit_inbuiltstatementnoarg_stmt(self, expr : InbuiltStatementNoarg):
@@ -729,7 +758,11 @@ class CodeGenerator(ExprVisitor, StmtVisitor):
             left_const, v1_name = self._operand_name(expr.val1)
             if not left_const:
                 self.pending_protect.append(v1_name)
-            v2 = self._resolve_operand(expr.val2)
+
+            idx_const, idx_val = self._operand_name(expr.val2)
+            idx_amt = self._plus_one_operand((idx_const, idx_val))
+            v2 = self._wrap(*idx_amt)
+
             if not left_const:
                 self.pending_protect.pop()
             v1 = v1_name if left_const else f"${v1_name}$"
@@ -740,7 +773,7 @@ class CodeGenerator(ExprVisitor, StmtVisitor):
                 self.add_stmt("load", str(v1).strip("$"))
 
             self.add_stmt("split", v2)
-            
+
             self.add_stmt("save", result_val)
             return result_val
 

@@ -25,6 +25,7 @@ class TypeCheckingPass(StmtVisitor, ExprVisitor):
         self.function_return_stack : list[Datatypes] = []
         self.function_is_returned_stack : list[Datatypes] = [] # there's definitely a better way somewhere
         self.function_declarations_stack : list[list[str]] = [[]]
+        self.switch_type_stack: list[Datatypes] = []
         
         self.call_graph: dict[str, set[str]] = {}   # for ded code elimination
         self.current_function_stack: list[str] = []
@@ -299,6 +300,27 @@ class TypeCheckingPass(StmtVisitor, ExprVisitor):
                 pass # can be INT, or STR, and thats all we have anyway
 
         return obj
+
+    def visit_switch_stmt(self, stmt: Switch):
+        subject = stmt.expression.accept(self)
+        if subject.datatype not in (Datatypes.INT, Datatypes.STRING):
+            raise TypeError("Switch subject must be an int or str", *stmt.location)
+
+        self.switch_type_stack.append(subject.datatype)
+        cases = [c.accept(self) for c in stmt.cases]
+        self.switch_type_stack.pop()
+        return Switch(subject, cases, location=stmt.location)
+
+    def visit_switchcase_stmt(self, stmt: SwitchCase):
+        value = stmt.value.accept(self)
+        expected = self.switch_type_stack[-1]
+        if value.datatype is not expected:
+            raise TypeError(
+                f"Case value of type {value.datatype.name} does not match switch subject of type {expected.name}",
+                *stmt.location,
+            )
+        body = stmt.body.accept(self)
+        return SwitchCase(value, body, location=stmt.location)
 
     # MARK: Expressions
 
