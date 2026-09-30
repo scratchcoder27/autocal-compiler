@@ -41,8 +41,6 @@ from astdefs.expr import *
 
 import traceback
 
-OPTIMISATION_LEVEL = 3
-
 class CompileError(Exception):
     def __init__(self, error: str, line_no: int, file_no: int = 0):
         self.line_no = line_no
@@ -59,6 +57,7 @@ def parse_args() -> argparse.Namespace:
     arg_parser.add_argument("--debug-parsing", help="Pretty prints the AST", action="store_true")
     arg_parser.add_argument("--debug-analysis", help="Performs the analysis, and prints the AST", action="store_true")
     arg_parser.add_argument("--skip-optimisation", help="Skips the optimisation pass", action="store_true")
+    arg_parser.add_argument("--copy", help="Copies the generated program to clipboard (LINUX ONLY, USES XCLIP)", action="store_true")
     args = arg_parser.parse_args()
     return args
 
@@ -226,7 +225,14 @@ if __name__ == "__main__":
                     if item[0] != "buffer":
                         f.write(f"{line.strip()}\n")
                     else:
-                        f.write(f"{line}\n")    
+                        f.write(f"{line}\n")
+
+        if args.copy:
+            import subprocess
+            with open(args.output_file, 'r') as f:
+                process = subprocess.Popen(['xclip', '-selection', 'clipboard'], stdin=subprocess.PIPE)
+                process.communicate(f.read().encode("utf-8"))
+            print("Copied to clipboard")
         
     except CompileError as e:
         # traceback.print_exception(e)

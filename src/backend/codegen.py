@@ -611,8 +611,6 @@ class CodeGenerator(ExprVisitor, StmtVisitor):
     def visit_binaryexpr_expr(self, expr : BinaryExpr):
         op = expr.operator.lexeme
         
-        if op == "%":    op = "m"
-
         if op in ["==", "!=", ">", "<", ">=", "<="]:
             self.emit_native_comparison(expr)
             return self.convert_buffer_to_bool_int()

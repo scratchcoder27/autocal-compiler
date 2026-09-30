@@ -1,8 +1,10 @@
 #ifndef LIB_IO
 #define LIB_IO
 
+#ifndef TEXT_IGNORE_NOT_DEFINED
 #ifndef TEXT_PORT
 #error TEXT_PORT must be defined
+#endif
 #endif
 
 #define CLEAR() send("clear", TEXT_PORT) \n endtick

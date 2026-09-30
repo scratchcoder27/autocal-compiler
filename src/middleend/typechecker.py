@@ -205,7 +205,7 @@ class TypeCheckingPass(StmtVisitor, ExprVisitor):
         name = self._name_str(stmt.name)
 
         if self.scope.check_exists_in_scope(name):
-            print(self.scope.variables)
+            # print(self.scope.variables)
             raise TypeError(
                 f"Variable '{name}' is already declared in this scope",
                 *stmt.location,
@@ -389,14 +389,14 @@ class TypeCheckingPass(StmtVisitor, ExprVisitor):
             )
 
         new_value = expr.value.accept(self)
-        if not new_value.datatype:
-            print(new_value)
+        # if not new_value.datatype:
+            # print(new_value)
 
         existing_variable = self.scope.resolve(name)
         existing_type = existing_variable.type
 
         if existing_type is not None and new_value.datatype != existing_type:
-            print(new_value)
+            # print(new_value)
             raise TypeError(
                 f"Cannot assign {new_value.datatype.name} to variable '{name}' "
                 f"of type {existing_type.name}",

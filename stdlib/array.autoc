@@ -1,23 +1,26 @@
 #ifndef LIB_ARRAY
 #define LIB_ARRAY
 
-//Fixed-width string array.
+// Fixed-width string array.
 
 #define ARRAY_CREATE(name, element_size) \
-    var name = "" \n \
     var name&size = (element_size) \n \
+    var name = array_pad("␀", name&size) \n \
     var name&idx = 0
 
 #define ARRAY_APPEND(name, val) \
     name += array_pad(toStr(val), name&size) \n \
     name&idx++
 
+#define ARRAY_GET_NOSTRIP(name, idx) \
+    toInt(name[(((idx) + 1) * name&size):(((idx) + 2) * name&size)])
+
 #define ARRAY_GET(name, idx) \
-    toInt(name[((idx) * name&size):(((idx) + 1) * name&size)])
+    array_unpad(name[(((idx) + 1) * name&size):(((idx) + 2) * name&size)])
 
 #define ARRAY_SET(name, idx, val) \
     var name&setval = array_pad(toStr(val), name&size) \n \
-    var name&setpos = (idx) * name&size \n \
+    var name&setpos = ((idx) + 1) * name&size \n \
     name = name[:name&setpos] + name&setval + name[(name&setpos + name&size):]
 
 #define ARRAY_GET_RAW(name) \
@@ -32,7 +35,7 @@
 #define ARRAY_FROM_RAW(name, raw, element_size) \
     var name = (raw) \n \
     var name&size = (element_size) \n \
-    var name&idx = len(name) / name&size
+    var name&idx = round(len(name) / name&size) - 1
 
 #define ARRAY_COPY(name, copy_name) \
     var copy_name = name \n \
@@ -41,26 +44,34 @@
 
 #define ARRAY_POP(name) \
     if name&idx > 0: \n |indent| \
-        name = name[:((name&idx - 1) * name&size)] \n \
+        name = name[:(name&idx * name&size)] \n \
         name&idx-- |dedent|
 
 def array_pad(value : str, size : int) -> str:
     while len(value) < size:
-        value = "0" + value
+        value = "␞" + value
+
+    return value
+
+def array_unpad(value : str) -> str:
+    while len(value) > 0 and value[0] == "␞":
+        value = value[1:]
 
     return value
 
 def array_get_idx(a : str, element : int, element_size : int) -> int:
-    var count = len(a) / element_size
+    var count = round(len(a) / element_size) - 1
     var i = 0
 
     while i < count:
-        if toInt(a[(i * element_size):((i + 1) * element_size)]) == element:
+        if toInt(a[((i + 1) * element_size):((i + 2) * element_size)]) == element:
             return i
 
         i++
 
     return -1
 
+#define ARRAY_GET(name, idx) \
+    array_unpad(name[(((idx) + 1) * name&size):(((idx) + 2) * name&size)])
 
 #endif
