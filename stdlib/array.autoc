@@ -71,7 +71,4 @@ def array_get_idx(a : str, element : int, element_size : int) -> int:
 
     return -1
 
-#define ARRAY_GET(name, idx) \
-    array_unpad(name[(((idx) + 1) * name&size):(((idx) + 2) * name&size)])
-
 #endif

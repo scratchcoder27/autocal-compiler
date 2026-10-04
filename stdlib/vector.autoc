@@ -18,7 +18,7 @@
 #define VECTOR_GET(name, idx) \
     split(name, (idx) + 1)
 
-#define VECTOR_GET_IDX(name, element) vector_get_idx(name, toString(element))
+#define VECTOR_GET_IDX(name, element) vector_get_idx(name, toStr(element))
 
 #define VECTOR_GET_LEN(name) \
     (name&idx)
