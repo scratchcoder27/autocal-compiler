@@ -6,7 +6,9 @@
 #define ARRAY_CREATE(name, element_size) \
     var name&size = (element_size) \n \
     var name = array_pad("␀", name&size) \n \
-    var name&idx = 0
+    var name&idx = 0 \n \
+    var name&setpos = 0 \n \
+    var name&setval = ""
 
 #define ARRAY_APPEND(name, val) \
     name += array_pad(toStr(val), name&size) \n \
@@ -19,8 +21,8 @@
     array_unpad(name[(((idx) + 1) * name&size):(((idx) + 2) * name&size)])
 
 #define ARRAY_SET(name, idx, val) \
-    var name&setval = array_pad(toStr(val), name&size) \n \
-    var name&setpos = ((idx) + 1) * name&size \n \
+    name&setval = array_pad(toStr(val), name&size) \n \
+    name&setpos = ((idx) + 1) * name&size \n \
     name = name[:name&setpos] + name&setval + name[(name&setpos + name&size):]
 
 #define ARRAY_GET_RAW(name) \

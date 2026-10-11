@@ -675,13 +675,19 @@ class CodeGenerator(ExprVisitor, StmtVisitor):
         self.add_stmt("jmpnot", else_lbl)
         
         v1 = self._eval_expr(expr.val1)
-        self.add_stmt("load", v1)
+        if isinstance(expr.val1, Constant):
+            self.add_stmt("buffer", v1)
+        else:
+            self.add_stmt("load", v1)
         self.add_stmt("save", result_var)
         self.add_stmt("jmp", end_lbl)
         
         self.add_stmt("dest", else_lbl)
         v2 = self._eval_expr(expr.val2)
-        self.add_stmt("load", v2)
+        if isinstance(expr.val2, Constant):
+            self.add_stmt("buffer", v2)
+        else:
+            self.add_stmt("load", v2)
         self.add_stmt("save", result_var)
         
         self.add_stmt("dest", end_lbl)
