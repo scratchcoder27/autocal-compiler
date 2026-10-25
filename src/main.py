@@ -58,6 +58,7 @@ def parse_args() -> argparse.Namespace:
     arg_parser.add_argument("--debug-analysis", help="Performs the analysis, and prints the AST", action="store_true")
     arg_parser.add_argument("--skip-optimisation", help="Skips the optimisation pass", action="store_true")
     arg_parser.add_argument("--copy", help="Copies the generated program to clipboard (LINUX ONLY, USES XCLIP)", action="store_true")
+    arg_parser.add_argument("--autocal-ignore-errors", help="Enables 'except' statements (the AUTOCAL must have 'ignore errors' turned on)", action="store_true")
     args = arg_parser.parse_args()
     return args
 
@@ -179,6 +180,8 @@ if __name__ == "__main__":
         
         lexed_tokens, options = preprocess(lexed_tokens)
         lexed_tokens = fix_inline_asm(lexed_tokens)
+
+        options["autocal_ignore_errors"] = "true" if args.autocal_ignore_errors else "false"
 
         if args.debug_lexing:
             print(f"{colors.BRIGHT_MAGENTA}Lexing output:{colors.RESET}")

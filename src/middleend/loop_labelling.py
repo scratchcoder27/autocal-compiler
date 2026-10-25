@@ -167,6 +167,19 @@ class LoopLabellingPass(StmtVisitor, ExprVisitor):
         return SwitchCase(stmt.value.accept(self), stmt.body.accept(self),
                         location=stmt.location)
 
+    def visit_except_stmt(self, stmt):
+        return Except(stmt.code.accept(self), stmt.body.accept(self), location=stmt.location)
+
+    def visit_try_stmt(self, stmt):
+        return Try(stmt.body.accept(self),
+                [h.accept(self) for h in stmt.handlers],
+                location=stmt.location)
+
+    def visit_catchclause_stmt(self, stmt):
+        code = stmt.code.accept(self) if stmt.code is not None else None
+        return CatchClause(code, stmt.is_any, stmt.name, stmt.body.accept(self),
+                        location=stmt.location)
+
     # MARK: Expressions
 
     def visit_functioncall_expr(self, expr : FunctionCall):

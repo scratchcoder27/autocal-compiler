@@ -1,0 +1,16 @@
+#pragma clockspeed 20
+
+#define TEXT_PORT "control"
+#include <termio>
+#include <exception>
+
+CLEAR()
+
+var x = "a"
+var i
+
+try:
+    for (i = 1; i < 300; i++)
+        push(x)
+catch STACKOVERFLOW_EXCEPTION:
+    PRINT("Stack overflow while pushing " + i + "th element")

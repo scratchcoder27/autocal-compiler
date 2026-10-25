@@ -11,6 +11,24 @@ from variable import Variable
 
 ASM_PLACEHOLDER_REGEX = re.compile(r"<<(\w+)>>")
 
+AUTOCAL_STATUSES: dict[int, tuple[str, bool]] = {
+    0:  ("ok", False),
+    1:  ("unrecognized_command", True),
+    2:  ("end_tick", False),
+    3:  ("shutdown", False),
+    4:  ("skip", False),
+    5:  ("undefined", True),
+    6:  ("stack_exceeded", True),
+    7:  ("parameter_missing", True),
+    8:  ("parameter_oob", True),
+    9:  ("parameter_parse_error", True),
+    10: ("no_destination", True),
+    11: ("arithmetic_exception", True),
+    12: ("buffer_empty", True),
+}
+
+_NO_CHECK = (Null, Break, Continue, Return, Function, FunctionDeclarationStmt)
+
 class CodeGenException(Exception):
     def __init__(
         self,
@@ -43,6 +61,9 @@ class CodeGenerator(ExprVisitor, StmtVisitor):
         self.use_native_callstack = False
         self.use_call_frame_protection = False
 
+        self.try_stack: list[str] = []
+
+        _NO_CHECK = (Null, Break, Continue, Return, Function, FunctionDeclarationStmt)
         self.warnings = {
             "stackCorruption": False
         }
@@ -218,6 +239,7 @@ class CodeGenerator(ExprVisitor, StmtVisitor):
     
     def add_stmt(self, name, *args):
         self.program.append((name, args))
+
     
     def next_tmp(self) -> str:
         temp = f"t_{self.temp_var}"
@@ -266,12 +288,19 @@ class CodeGenerator(ExprVisitor, StmtVisitor):
         self.add_stmt("save", var)
         return False, var
 
+    def _emit_error_check(self):
+        self.add_stmt("load", "last_error")
+        self.add_stmt("eq", 0)
+        self.add_stmt("jmpnot", self.try_stack[-1])
+
+
     # MARK: program
     def generate_code(self, program: Program, options : dict = {}):
         try:
             self.descoping: bool = options.get("explicit_descoping", "false").lower() == "true"
             self.use_native_callstack: bool = options.get("native_callstack", "true").lower() == "true"
             self.use_call_frame_protection: bool = options.get("use_call_frames", "false").lower() == "true"
+            self.ignore_errors = options.get("autocal_ignore_errors", "false").lower() == "true"
         except ValueError:
             raise CodeGenException("Invalid value for pragma")
         
@@ -290,6 +319,10 @@ class CodeGenerator(ExprVisitor, StmtVisitor):
         self.add_stmt("buffer", "0")
         self.add_stmt("save", "return-value")
 
+        if self.ignore_errors:
+            self.add_stmt("buffer", "0")
+            self.add_stmt("save", "last_error")
+
         for stmt in program.stmts:
             stmt.accept(self)
     
@@ -299,8 +332,10 @@ class CodeGenerator(ExprVisitor, StmtVisitor):
     def visit_function_stmt(self, function: Function):
         skip_lbl = self.next_label("skip_fn")
         self.add_stmt("jmp", skip_lbl)
-
         self.add_stmt("dest", f"f_{function.name}")
+
+        saved_try, self.try_stack = self.try_stack, []
+
         self.scopes = Scope(self.scopes)   # dedicated function scope for params
         for param, param_type in function.params:
             var_name = param.lexeme
@@ -308,8 +343,11 @@ class CodeGenerator(ExprVisitor, StmtVisitor):
             self.scopes.define(var_name, Variable(var_name, param_type, modifier))
             self.add_stmt("pop")
             self.add_stmt("save", f"{var_name}_{modifier}")
+
         function.body.accept(self)
+
         self.scopes = self.scopes.parent 
+        self.try_stack = saved_try
 
         self.add_stmt("dest", skip_lbl)
 
@@ -317,6 +355,8 @@ class CodeGenerator(ExprVisitor, StmtVisitor):
         self.scopes = Scope(self.scopes)
         for item in block.body:
             item.accept(self)
+            if self.try_stack and not isinstance(item, _NO_CHECK):
+                self._emit_error_check()
         if self.descoping:
             self.add_stmt("buffer 0")
             for variable in self.scopes.variables.keys():
@@ -467,6 +507,114 @@ class CodeGenerator(ExprVisitor, StmtVisitor):
 
     def visit_switchcase_stmt(self, stmt):
         pass  # handled in visit_switch_stmt
+
+    # MARK: exceptions
+    def visit_except_stmt(self, stmt: Except):
+        if not self.ignore_errors:
+            raise CodeGenException("'except' requires --autocal-ignore-errors", *stmt.location)
+        if not isinstance(stmt.code, Constant) or stmt.code.value.type is not TokenType.INT:
+            raise CodeGenException("Except number must be an integer literal", *stmt.location)
+
+        index = stmt.code.value.literal
+        entry = AUTOCAL_STATUSES.get(index)
+        if entry is None:
+            raise CodeGenException(
+                f"Unknown except number {index} (valid: 0-{len(AUTOCAL_STATUSES) - 1})",
+                *stmt.location,
+            )
+        name, is_error = entry
+        if not is_error:
+            raise CodeGenException(
+                f"Status {index} ({name}) is not an error and is never stored in last_error",
+                *stmt.location,
+            )
+
+        skip_lbl = self.next_label("except_skip")
+        self.add_stmt("load", "last_error")
+        self.add_stmt("eq", name)
+        self.add_stmt("jmpnot", skip_lbl)
+
+        self.add_stmt("buffer", "0") # so the error isn't handled twice
+        self.add_stmt("save", "last_error")
+        stmt.body.accept(self)
+
+        self.add_stmt("dest", skip_lbl)
+
+    # MARK: trycatch
+    def visit_catchclause_stmt(self, stmt):
+        pass  # handled in visit_try_stmt
+
+    def visit_try_stmt(self, stmt: Try):
+        if not self.ignore_errors:
+            raise CodeGenException("'try' requires --autocal-ignore-errors", *stmt.location)
+
+        prefix = self.next_label("try")
+        catch_lbl, end_lbl = f"{prefix}_catch", f"{prefix}_end"
+
+        # resolve handler names up front
+        names, seen = [], set()
+        for h in stmt.handlers:
+            if h.is_any:
+                names.append(None)
+                continue
+            if not isinstance(h.code, Constant) or h.code.value.type is not TokenType.INT:
+                raise CodeGenException("Catch number must be an integer literal", *h.location)
+            entry = AUTOCAL_STATUSES.get(h.code.value.literal)
+            if entry is None:
+                raise CodeGenException(f"Unknown catch number {h.code.value.literal}", *h.location)
+            name, is_error = entry
+            if not is_error:
+                raise CodeGenException(
+                    f"Status {name} is not an error and is never stored in last_error", *h.location
+                )
+            if name in seen:
+                raise CodeGenException(f"Duplicate handler for {name}", *h.location)
+            seen.add(name)
+            names.append(name)
+
+        self.add_stmt("buffer", "0")
+        self.add_stmt("save", "last_error")
+
+        self.try_stack.append(catch_lbl)
+        stmt.body.accept(self)
+        if not isinstance(stmt.body, Block):# a single statement body gets no per statement check
+            self._emit_error_check()
+        self.try_stack.pop() # handlers are not protected
+        self.add_stmt("jmp", end_lbl)
+
+        self.add_stmt("dest", catch_lbl)
+        for name, h in zip(names, stmt.handlers):
+            next_lbl = self.next_label("except_next")
+            if name is not None:
+                self.add_stmt("load", "last_error")
+                self.add_stmt("eq", name)
+                self.add_stmt("jmpnot", next_lbl)
+
+            if h.name is not None:
+                self.scopes = Scope(self.scopes)
+                var = h.name.lexeme
+                modifier = self._next_modifier(var)
+                self.scopes.define(var, Variable(var, Datatypes.STRING, modifier))
+                self.add_stmt("load", "last_error")
+                self.add_stmt("save", f"{var}_{modifier}")
+
+            self.add_stmt("buffer", "0")
+            self.add_stmt("save", "last_error")
+            h.body.accept(self)
+
+            if h.name is not None:
+                self.scopes = self.scopes.parent
+            self.add_stmt("jmp", end_lbl)
+            self.add_stmt("dest", next_lbl)
+
+        # no handler matched, skipped when a catch-all exists
+        if names[-1] is not None:
+            if self.try_stack:
+                self.add_stmt("jmp", self.try_stack[-1])
+            else:
+                self.add_stmt("shutdown") #bit harsh, perhaps
+
+        self.add_stmt("dest", end_lbl)
     
     # MARK: predefined
     def visit_inbuiltstatementnoarg_stmt(self, expr : InbuiltStatementNoarg):
@@ -475,7 +623,7 @@ class CodeGenerator(ExprVisitor, StmtVisitor):
                 self.add_stmt("endtick")
             case TokenType.SHUTDOWN:
                 self.add_stmt("shutdown")
-    
+
     def visit_inbuiltprocedurearg1_stmt(self, stmt: InbuiltProcedureArg1):
         val = self._resolve_operand(stmt.val)
         

@@ -71,6 +71,7 @@ class TypeCheckingPass(StmtVisitor, ExprVisitor):
 
     def check(self, program, options):
         self.explicit_conversions : bool = options.get("explicit_conversions", "false").lower() == "true"
+        self.ignore_errors: bool = options.get("autocal_ignore_errors", "false").lower() == "true"
 
         for item in program.stmts:
             if isinstance(item, Function):
@@ -321,6 +322,44 @@ class TypeCheckingPass(StmtVisitor, ExprVisitor):
             )
         body = stmt.body.accept(self)
         return SwitchCase(value, body, location=stmt.location)
+
+    def visit_except_stmt(self, stmt: Except):
+        if not self.ignore_errors:
+            raise TypeError(
+                "'except' can only be used when compiling with --autocal-ignore-errors",
+                *stmt.location,
+            )
+        code = stmt.code.accept(self)
+        if code.datatype is not Datatypes.INT:
+            raise TypeError("Except number must be an int", *stmt.location)
+        body = stmt.body.accept(self)
+        return Except(code, body, location=stmt.location)
+
+    def visit_try_stmt(self, stmt: Try):
+        if not self.ignore_errors:
+            raise TypeError("'try' requires --autocal-ignore-errors", *stmt.location)
+        body = stmt.body.accept(self)
+        handlers = []
+        for i, h in enumerate(stmt.handlers):
+            if h.is_any and i != len(stmt.handlers) - 1:
+                raise TypeError("A catch-all ('catch any_exception') must be the last handler", *h.location)
+            handlers.append(h.accept(self))
+        return Try(body, handlers, location=stmt.location)
+
+    def visit_catchclause_stmt(self, stmt: CatchClause):
+        code = None
+        if not stmt.is_any:
+            code = stmt.code.accept(self)
+            if code.datatype is not Datatypes.INT:
+                raise TypeError("Catch number must be an int", *stmt.location)
+
+        self._enter_scope()
+        if stmt.name is not None:
+            n = stmt.name.lexeme
+            self.scope.define(n, Variable(n, Datatypes.STRING, self._next_modifier(n)))
+        body = stmt.body.accept(self)
+        self._exit_scope()
+        return CatchClause(code, stmt.is_any, stmt.name, body, location=stmt.location)
 
     # MARK: Expressions
 

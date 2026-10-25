@@ -173,13 +173,38 @@ class AstPrinter(StmtVisitor, ExprVisitor):
         self.level -= 1
         return f"{indent}Switch(\n{subject}\n{cases}\n{indent})"
 
-    def visit_switchcase_stmt(self, stmt):
+    def visit_switchcase_stmt(self, stmt : SwitchCase):
         indent = self._indent()
         self.level += 1
         value = stmt.value.accept(self)
         body = stmt.body.accept(self)
         self.level -= 1
         return f"{indent}Case(\n{value}\n{body}\n{indent})"
+
+    def visit_except_stmt(self, stmt : Except):
+        indent = self._indent()
+        self.level += 1
+        code = stmt.code.accept(self)
+        body = stmt.body.accept(self)
+        self.level -= 1
+        return f"{indent}Except(\n{code}\n{body}\n{indent})"
+
+    def visit_try_stmt(self, stmt : Try):
+        indent = self._indent()
+        self.level += 1
+        body = stmt.body.accept(self)
+        handlers = "\n".join(h.accept(self) for h in stmt.handlers)
+        self.level -= 1
+        return f"{indent}Try(\n{body}\n{handlers}\n{indent})"
+
+    def visit_catchclause_stmt(self, stmt):
+        indent = self._indent()
+        self.level += 1
+        code = "any" if stmt.is_any else stmt.code.accept(self)
+        var = f" as {stmt.name.lexeme}" if stmt.name else ""
+        body = stmt.body.accept(self)
+        self.level -= 1
+        return f"{indent}Catch{var}(\n{indent}    {code}\n{body}\n{indent})"
 
     def visit_expression_stmt(self, expr):
         return expr.expression.accept(self)

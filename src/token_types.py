@@ -102,6 +102,11 @@ class TokenType(Enum):
     SHUTDOWN = auto()
     ENDTICK = auto()
 
+    EXCEPT = auto()
+    TRY = auto()
+    CATCH = auto()
+    AS = auto()
+
     NULL = auto()
 
     # datatypes

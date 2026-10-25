@@ -9,12 +9,12 @@ def define_ast(
     extra_fields: list[tuple[str, str, str]] | None = None,  # (name, type, default_expr)
 ) -> None:
     
-    path = Path(output_dir) / "src" / f"{base_name.lower()}.py"
+    path = Path(output_dir) / "src" / "astdefs" / f"{base_name.lower()}.py"
 
     with open(path, "w", encoding="utf-8") as writer:
         writer.write("from __future__ import annotations\n")
         writer.write("from abc import ABC, abstractmethod\n")
-        writer.write("from node import Node\n")
+        writer.write("from astdefs.node import Node\n")
         writer.write("from tokens import Token\n")
         writer.write("from datatypes import Datatypes\n")
         writer.write("from token_types import TokenType\n")
@@ -102,6 +102,9 @@ def main():
             "InbuiltProcedureArg1: TokenType type, Expr val",
             "Switch : Expr expression, list[SwitchCase] cases",
             "SwitchCase : Expr value, Stmt body",
+            "Except : Expr code, Stmt body",
+            "Try : Stmt body, list[CatchClause] handlers",
+            "CatchClause : Expr code, bool is_any, Token name, Stmt body",
         ],
     )
     define_ast(

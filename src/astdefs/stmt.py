@@ -72,6 +72,18 @@ class StmtVisitor(ABC):
     def visit_switchcase_stmt(self, expr):
         pass
 
+    @abstractmethod
+    def visit_except_stmt(self, expr):
+        pass
+
+    @abstractmethod
+    def visit_try_stmt(self, expr):
+        pass
+
+    @abstractmethod
+    def visit_catchclause_stmt(self, expr):
+        pass
+
 
 
 class Stmt(Node, ABC):
@@ -217,5 +229,34 @@ class SwitchCase(Stmt):
 
     def accept(self, visitor):
         return visitor.visit_switchcase_stmt(self)
+
+
+@dataclass
+class Except(Stmt):
+    code: Expr
+    body: Stmt
+
+    def accept(self, visitor):
+        return visitor.visit_except_stmt(self)
+
+
+@dataclass
+class Try(Stmt):
+    body: Stmt
+    handlers: list[CatchClause]
+
+    def accept(self, visitor):
+        return visitor.visit_try_stmt(self)
+
+
+@dataclass
+class CatchClause(Stmt):
+    code: Expr
+    is_any: bool
+    name: Token
+    body: Stmt
+
+    def accept(self, visitor):
+        return visitor.visit_catchclause_stmt(self)
 
 

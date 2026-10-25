@@ -344,6 +344,47 @@ class Parser:
                 self.consume(TokenType.DEDENT)
                 return Switch(subject, cases, location=loc)
 
+            case TokenType.EXCEPT:
+                loc = self.peek_loc()
+                self.advance()
+                code = self.expression()
+                self.consume(TokenType.COLON, error="Expected ':' after except number")
+                body = self.parse_block_or_stmt()
+                return Except(code, body, location=loc)
+
+            case TokenType.TRY:
+                loc = self.peek_loc()
+                self.advance()
+                self.consume(TokenType.COLON, error="Expected ':' after try")
+                body = self.parse_block_or_stmt()
+
+                handlers = []
+                while self.peek().type == TokenType.CATCH:
+                    h_loc = self.peek_loc()
+                    self.advance()
+
+                    code, is_any = None, False
+                    nxt = self.peek()
+                    if nxt.type == TokenType.COLON:
+                        is_any = True # bare catch
+                    elif nxt.type == TokenType.IDENTIFIER and nxt.lexeme == "any":
+                        self.advance()
+                        is_any = True
+                    else:
+                        code = self.expression()
+
+                    name = None
+                    if self.peek().type == TokenType.AS:
+                        self.advance()
+                        name = self.consume(TokenType.IDENTIFIER, error="Expected a variable name after 'as'")
+
+                    self.consume(TokenType.COLON, error="Expected ':' after catch")
+                    handlers.append(CatchClause(code, is_any, name, self.parse_block_or_stmt(), location=h_loc))
+
+                if not handlers:
+                    raise self.error("A try needs at least one catch clause")
+                return Try(body, handlers, location=loc)
+
             case _:
                 loc = self.peek_loc()
                 if self.peek().type in self.INBUILT_STATEMENTS:

@@ -92,6 +92,11 @@ class Lexer:
             "shutdown": TokenType.SHUTDOWN,
             "endtick": TokenType.ENDTICK,
 
+            "except": TokenType.EXCEPT,
+            "try": TokenType.TRY,
+            "catch": TokenType.CATCH,
+            "as": TokenType.AS,
+
             "not": TokenType.LOGICAL_NOT,
             "and": TokenType.LOGICAL_AND,
             "or": TokenType.LOGICAL_OR,
