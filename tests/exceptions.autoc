@@ -1,4 +1,6 @@
 #pragma clockspeed 20
+#pragma useScopingBraces true
+#pragma native_callstack false
 
 #define TEXT_PORT "control"
 #include <termio>
@@ -9,8 +11,10 @@ CLEAR()
 var x = "a"
 var i
 
-try:
-    for (i = 1; i < 300; i++)
+try {
+    for (i = 1; i < 300; i++) {
         push(x)
-catch STACKOVERFLOW_EXCEPTION:
+    }
+} catch STACKOVERFLOW_EXCEPTION {
     PRINT("Stack overflow while pushing " + i + "th element")
+}
